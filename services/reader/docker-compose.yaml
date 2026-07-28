@@ -1,0 +1,51 @@
+# The reader service on its own.
+#
+#   docker compose up --build          (from services/reader/)
+#   docker compose up --build          (from the repo root, which includes this file)
+#
+# No port is published by default: the backend reaches it over the compose network, and
+# this service will fetch any URL it is handed. Uncomment `ports` to call it directly,
+# and set READER_API_KEY if it will be reachable from anywhere untrusted.
+
+services:
+  reader:
+    build:
+      # Relative to this file, so the service builds the same either way.
+      context: .
+      dockerfile: Dockerfile
+    container_name: substrate-reader
+    restart: unless-stopped
+    # ports:
+    #   - "${READER_PORT:-3001}:3001"
+    volumes:
+      # Shared with the backend, which serves the saved images.
+      - screenshots:/app/local-storage
+    environment:
+      PORT: "3001"
+      STORAGE_DIR: "/app/local-storage"
+      PUPPETEER_SKIP_DOWNLOAD: "true"
+      PUPPETEER_EXECUTABLE_PATH: "/usr/bin/google-chrome-stable"
+      READER_API_KEY: "${READER_API_KEY:-}"
+      # Makes stored-image links absolute; see .env.example.
+      PUBLIC_BASE_URL: "${PUBLIC_BASE_URL:-}"
+      # Bounds on image downloading; see .env.example.
+      IMAGE_MAX_PER_CRAWL: "${IMAGE_MAX_PER_CRAWL:-}"
+      IMAGE_TOTAL_BYTES_PER_CRAWL: "${IMAGE_TOTAL_BYTES_PER_CRAWL:-}"
+      IMAGE_DOWNLOAD_BUDGET_MS: "${IMAGE_DOWNLOAD_BUDGET_MS:-}"
+
+      # Optional: send screenshots to Supabase Storage instead of the local volume.
+      SUPABASE_URL: "${SUPABASE_URL:-}"
+      SUPABASE_PUBLIC_URL: "${SUPABASE_PUBLIC_URL:-}"
+      SUPABASE_SERVICE_ROLE_KEY: "${SUPABASE_SERVICE_ROLE_KEY:-}"
+      SUPABASE_SCREENSHOT_BUCKET: "${SUPABASE_SCREENSHOT_BUCKET:-substrate-screenshots}"
+      SUPABASE_IMAGE_BUCKET: "${SUPABASE_IMAGE_BUCKET:-substrate-images}"
+    networks:
+      - substrate
+
+volumes:
+  screenshots:
+    name: substrate-screenshots
+
+networks:
+  substrate:
+    name: substrate
