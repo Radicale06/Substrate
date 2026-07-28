@@ -1,0 +1,30 @@
+node_modules/
+dist/
+build/
+frontend/.vite/
+
+# Prisma generates its client into the source tree
+backend/src/generated/
+*.tsbuildinfo
+
+# Local env and secrets
+.env
+.secret.*
+*.local
+
+# Saved screenshots (the runtime writes these)
+backend/screenshots/*
+!backend/screenshots/.gitkeep
+services/reader/screenshots/
+
+# Downloaded model weights
+services/*/models/
+
+# Tooling caches
+.impeccable/
+__pycache__/
+*.py[cod]
+
+*.log
+.DS_Store
+.aider*

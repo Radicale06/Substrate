@@ -1,0 +1,55 @@
+Substrate
+Copyright 2026 The Substrate contributors.
+
+This product includes software developed at Jina AI Limited
+(https://jina.ai/), licensed under the Apache License, Version 2.0.
+
+  Copyright 2020-2024 Jina AI Limited.  All rights reserved.
+
+--------------------------------------------------------------------------------
+
+Origin and modifications
+------------------------
+
+Substrate began as a fork of the Jina AI Reader project
+(https://github.com/jina-ai/reader), by way of Harsh Gupta's Docker-deployable
+adaptation (https://github.com/hargup/reader).
+
+As required by section 4(b) of the Apache License, the significant changes made
+in this derivative work are:
+
+  * Firebase and Google Cloud Functions were removed entirely; the project is
+    now a plain Docker Compose stack with no cloud dependency.
+  * The single application was split into an API and independent services. The
+    browser, the segmenter and the model servers each run in their own
+    container, and the API orchestrates them over HTTP.
+  * The backend was rewritten on NestJS with Prisma; the crawl cache moved from
+    a mock Firestore to Postgres, and is optional.
+  * Capabilities were added that the original did not have: web search over
+    self-hosted SearXNG, a segmenter with six chunking strategies, embeddings
+    and reranking served by local open-weight models, image downloading, and a
+    browser console.
+  * The image alt-text captioning feature of the original was removed.
+  * Security handling was reworked, including SSRF protection covering IPv6 and
+    redirect chains, and content-type validation of stored files.
+
+--------------------------------------------------------------------------------
+
+Third-party components
+----------------------
+
+This project runs, but does not redistribute, several independent projects that
+carry their own licenses:
+
+  * SearXNG          (https://github.com/searxng/searxng)        AGPL-3.0
+  * Supabase         (https://github.com/supabase/supabase)      Apache-2.0
+  * Qwen3-Embedding  (https://huggingface.co/Qwen)               Apache-2.0
+  * Qwen3-Reranker   (https://huggingface.co/Qwen)               Apache-2.0
+
+The model weights are downloaded at runtime and are not part of this
+distribution. SearXNG is used as a network service via its HTTP API and its
+image is pulled from its own registry; it is not linked into or distributed
+with this software.
+
+Dependencies installed from npm and PyPI carry their own licenses, recorded in
+the respective package manifests and lockfiles.

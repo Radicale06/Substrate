@@ -1,0 +1,48 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug backend",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/backend/dist/main.js",
+      "cwd": "${workspaceFolder}/backend",
+      "preLaunchTask": "build backend",
+      "envFile": "${workspaceFolder}/backend/.env",
+      "env": {
+        "STORAGE_DIR": "${workspaceFolder}/backend/screenshots"
+      },
+      "skipFiles": ["<node_internals>/**"],
+      "outFiles": ["${workspaceFolder}/backend/dist/**/*.js"]
+    },
+    {
+      "name": "Debug reader service",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/services/reader/dist/main.js",
+      "cwd": "${workspaceFolder}/services/reader",
+      "preLaunchTask": "build reader",
+      "envFile": "${workspaceFolder}/services/reader/.env",
+      "env": {
+        "STORAGE_DIR": "${workspaceFolder}/backend/screenshots",
+        "// CHROME_ARGS": "--single-process crashes Chrome outside Linux containers",
+        "CHROME_ARGS": "--no-sandbox,--disable-dev-shm-usage"
+      },
+      "skipFiles": ["<node_internals>/**"],
+      "outFiles": ["${workspaceFolder}/services/reader/dist/**/*.js"]
+    },
+    {
+      "name": "Attach",
+      "type": "node",
+      "request": "attach",
+      "port": 9229,
+      "skipFiles": ["<node_internals>/**"]
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Debug backend + reader",
+      "configurations": ["Debug reader service", "Debug backend"]
+    }
+  ]
+}
