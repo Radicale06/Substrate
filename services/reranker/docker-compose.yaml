@@ -1,0 +1,35 @@
+# Reranker service — FastAPI over a transformers reranking model.
+#
+# Opt-in, because the model is downloaded on first start:
+#   docker compose --profile ai up reranker
+
+services:
+  reranker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: substrate-reranker
+    profiles: ["ai"]
+    restart: unless-stopped
+    volumes:
+      # Cache the weights so a restart does not re-download them.
+      - ./models:/models
+    environment:
+      MODEL_ID: "${RERANKER_MODEL_ID:-Qwen/Qwen3-Reranker-0.6B}"
+      # "causal" for Qwen3-Reranker, "cross-encoder" for BGE-style classifiers.
+      MODEL_KIND: "${RERANKER_MODEL_KIND:-causal}"
+      MODEL_DEVICE: "${RERANKER_DEVICE:-cpu}"
+      MAX_BATCH_SIZE: "${RERANKER_BATCH_SIZE:-8}"
+      MAX_DOCUMENTS: "${RERANKER_MAX_DOCUMENTS:-200}"
+      MAX_LENGTH: "${RERANKER_MAX_LENGTH:-4096}"
+      DEFAULT_INSTRUCTION: "${RERANKER_INSTRUCTION:-}"
+      INFERENCE_API_KEY: "${INFERENCE_API_KEY:-}"
+    # Not published to the host: only the backend needs to reach it.
+    expose:
+      - "8000"
+    networks:
+      - substrate
+
+networks:
+  substrate:
+    name: substrate

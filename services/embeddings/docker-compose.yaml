@@ -1,0 +1,34 @@
+# Embedding service — FastAPI over a sentence-transformers model.
+#
+# Opt-in, because the model is downloaded on first start:
+#   docker compose --profile ai up embeddings
+
+services:
+  embeddings:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: substrate-embeddings
+    profiles: ["ai"]
+    restart: unless-stopped
+    volumes:
+      # Cache the weights so a restart does not re-download them.
+      - ./models:/models
+    environment:
+      MODEL_ID: "${EMBEDDINGS_MODEL_ID:-Qwen/Qwen3-Embedding-0.6B}"
+      MODEL_DEVICE: "${EMBEDDINGS_DEVICE:-cpu}"
+      MAX_BATCH_SIZE: "${EMBEDDINGS_BATCH_SIZE:-32}"
+      MAX_INPUTS: "${EMBEDDINGS_MAX_INPUTS:-256}"
+      # Set false for models that carry their own prefixes, or none (BGE, E5).
+      USE_INSTRUCTION: "${EMBEDDINGS_USE_INSTRUCTION:-true}"
+      DEFAULT_INSTRUCTION: "${EMBEDDINGS_INSTRUCTION:-}"
+      INFERENCE_API_KEY: "${INFERENCE_API_KEY:-}"
+    # Not published to the host: only the backend needs to reach it.
+    expose:
+      - "8000"
+    networks:
+      - substrate
+
+networks:
+  substrate:
+    name: substrate
