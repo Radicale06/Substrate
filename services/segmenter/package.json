@@ -1,0 +1,32 @@
+{
+    "name": "@substrate/segmenter",
+    "version": "1.0.0",
+    "description": "Substrate segmenter service: token counting and chunking strategies for retrieval.",
+    "license": "Apache-2.0",
+    "private": true,
+    "main": "dist/main.js",
+    "engines": {
+        "node": ">=22"
+    },
+    "scripts": {
+        "build": "nest build",
+        "start": "node dist/main.js",
+        "start:dev": "nest start --watch",
+        "typecheck": "tsc -p tsconfig.json --noEmit"
+    },
+    "dependencies": {
+        "@nestjs/common": "^11.1.28",
+        "@nestjs/core": "^11.1.28",
+        "@nestjs/platform-express": "^11.1.28",
+        "reflect-metadata": "^0.2.2",
+        "rxjs": "^7.8.2",
+        "tiktoken": "^1.0.22"
+    },
+    "devDependencies": {
+        "@nestjs/cli": "^11.0.24",
+        "@nestjs/schematics": "^11.1.0",
+        "@types/express": "^5.0.6",
+        "@types/node": "^22",
+        "typescript": "^5.1.6"
+    }
+}

@@ -1,0 +1,21 @@
+# Keep host artifacts out of the build context so `COPY . .` cannot overlay a stale
+# node_modules or build output on top of the clean `npm ci` + `npm run build` result.
+node_modules
+dist
+*.tsbuildinfo
+
+# VCS / local dev noise
+.git
+.gitignore
+.vscode
+screenshots
+*.log
+
+# Not needed inside the image
+README.md
+docker-compose.yaml
+Dockerfile
+.dockerignore
+.env
+.env.example
+test

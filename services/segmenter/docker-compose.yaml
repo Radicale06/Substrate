@@ -1,0 +1,32 @@
+# The segmenter service on its own.
+#
+#   docker compose up --build          (from services/segmenter/)
+#   docker compose up --build          (from the repo root, which includes this file)
+#
+# No port is published by default: the backend reaches it over the compose network.
+#
+# EMBEDDINGS_URL is optional and only the `semantic` strategy uses it. Left unset — or
+# with the ai profile down — that strategy degrades to `recursive` and says so in the
+# response, so this service still starts and serves every other strategy.
+
+services:
+  segmenter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: substrate-segmenter
+    restart: unless-stopped
+    # ports:
+    #   - "${SEGMENTER_PORT:-3002}:3002"
+    environment:
+      PORT: "3002"
+      SEGMENTER_API_KEY: "${SEGMENTER_API_KEY:-}"
+      # Only the semantic strategy needs this; reachable when started with --profile ai.
+      EMBEDDINGS_URL: "${EMBEDDINGS_URL:-http://embeddings:8000}"
+      INFERENCE_API_KEY: "${INFERENCE_API_KEY:-}"
+    networks:
+      - substrate
+
+networks:
+  substrate:
+    name: substrate
