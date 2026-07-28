@@ -1,0 +1,34 @@
+// Prisma schema for the backend.
+//
+// The database is OPTIONAL: with no DATABASE_URL the service runs standalone and the
+// crawl cache disables itself. Prisma 7 no longer accepts `url` here — the connection
+// string reaches the client through a driver adapter (see src/prisma/prisma.service.ts)
+// and reaches the CLI through prisma.config.ts.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+  // The generator emits ESM by default, which uses import.meta and cannot run under
+  // this CommonJS build.
+  moduleFormat = "cjs"
+  runtime      = "nodejs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// Cached crawl results, keyed by target URL plus every option that changes the body.
+model CrawlCacheEntry {
+  /// sha256 over the URL and the response options.
+  cacheKey  String   @id @map("cache_key")
+  url       String
+  format    String
+  body      String
+  createdAt DateTime @default(now()) @map("created_at")
+  expiresAt DateTime @map("expires_at")
+
+  @@index([expiresAt])
+  @@index([url])
+  @@map("reader_crawl_cache")
+}
