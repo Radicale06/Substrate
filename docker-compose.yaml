@@ -1,0 +1,24 @@
+# Root stack: the backend plus the services it talks to.
+#
+#   docker compose up --build              console + backend + reader + search
+#   docker compose --profile ai up         also the embedding and reranker servers
+#
+# Each service owns its own compose file under services/ (or backend/). Paths inside an
+# included file resolve relative to THAT file, which is why each one can also be brought
+# up on its own from its own directory.
+#
+# The self-hosted Supabase stack is deliberately NOT included: it is a large, independent
+# stack with its own lifecycle. Start it separately when you want caching:
+#   cd services/supabase && docker compose up -d
+# then set DATABASE_URL for the backend (see .env.example).
+
+name: substrate
+
+include:
+  - frontend/docker-compose.yaml
+  - backend/docker-compose.yaml
+  - services/reader/docker-compose.yaml
+  - services/segmenter/docker-compose.yaml
+  - services/searxng/docker-compose.yaml
+  - services/embeddings/docker-compose.yaml
+  - services/reranker/docker-compose.yaml
