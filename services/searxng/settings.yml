@@ -1,0 +1,18 @@
+# Minimal SearXNG configuration for use as Reader's search backend.
+#
+# The stock configuration serves HTML only. Reader talks to the JSON API, so `json`
+# must appear under search.formats — without it every query comes back as 403.
+use_default_settings: true
+
+server:
+  # The container entrypoint replaces this placeholder with $SEARXNG_SECRET at startup.
+  secret_key: "ultrasecretkey"
+  # Reader is the only client and it is not a browser, so the bot limiter would only
+  # get in the way. Do not expose this instance publicly with the limiter off.
+  limiter: false
+  image_proxy: false
+
+search:
+  formats:
+    - html
+    - json
