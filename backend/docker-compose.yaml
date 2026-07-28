@@ -1,0 +1,53 @@
+# The NestJS backend on its own.
+#
+# Runs standalone from this folder, or as part of the root stack which includes it:
+#   docker compose up --build          (from backend/)
+#   docker compose up --build          (from the repo root)
+#
+# On its own it serves /v1/segment and reports the rest as unconfigured; the crawling,
+# search and model endpoints need their services, which the root stack brings up.
+
+services:
+  backend:
+    build:
+      # Relative to this file, so the service builds the same either way.
+      context: .
+      dockerfile: Dockerfile
+    container_name: substrate-backend
+    restart: unless-stopped
+    ports:
+      - "${BACKEND_PORT:-3000}:3000"
+    volumes:
+      # Written by the reader service, served from here.
+      - screenshots:/app/local-storage
+    environment:
+      PORT: "3000"
+      STORAGE_DIR: "/app/local-storage"
+      # Lets the bundled frontend call this API from the browser. Unset disables CORS.
+      CORS_ORIGINS: "${CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}"
+
+      # All optional. Unset means: that capability reports itself as unconfigured.
+      READER_URL: "${READER_URL:-http://reader:3001}"
+      READER_API_KEY: "${READER_API_KEY:-}"
+      SEGMENTER_URL: "${SEGMENTER_URL:-http://segmenter:3002}"
+      SEGMENTER_API_KEY: "${SEGMENTER_API_KEY:-}"
+      SEARXNG_URL: "${SEARXNG_URL:-http://searxng:8080}"
+      # Model services; only reachable when started with --profile ai.
+      EMBEDDINGS_URL: "${EMBEDDINGS_URL:-http://embeddings:8000}"
+      RERANKER_URL: "${RERANKER_URL:-http://reranker:8000}"
+      INFERENCE_API_KEY: "${INFERENCE_API_KEY:-}"
+
+      # Crawl cache. Without a database the service runs exactly as a standalone install.
+      DATABASE_URL: "${DATABASE_URL:-}"
+      DIRECT_URL: "${DIRECT_URL:-}"
+      CACHE_TTL_SECONDS: "${CACHE_TTL_SECONDS:-3600}"
+    networks:
+      - substrate
+
+volumes:
+  screenshots:
+    name: substrate-screenshots
+
+networks:
+  substrate:
+    name: substrate

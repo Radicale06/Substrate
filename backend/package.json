@@ -1,0 +1,66 @@
+{
+    "name": "@substrate/backend",
+    "version": "1.0.0",
+    "description": "Substrate backend: the API in front of the reader, search and model services \u2014 read, search, segment, embed and rerank.",
+    "license": "Apache-2.0",
+    "private": true,
+    "main": "dist/main.js",
+    "engines": {
+        "node": ">=22"
+    },
+    "scripts": {
+        "build": "prisma generate && nest build",
+        "start": "node dist/main.js",
+        "start:dev": "nest start --watch",
+        "start:debug": "nest start --debug --watch",
+        "typecheck": "tsc -p tsconfig.json --noEmit",
+        "prisma:generate": "prisma generate",
+        "prisma:migrate": "prisma migrate deploy",
+        "prisma:migrate:dev": "prisma migrate dev",
+        "test": "jest",
+        "test:e2e": "jest --config test/jest-e2e.json"
+    },
+    "dependencies": {
+        "@nestjs/common": "^11.1.28",
+        "@nestjs/config": "^4.0.4",
+        "@nestjs/core": "^11.1.28",
+        "@nestjs/platform-express": "^11.1.28",
+        "@prisma/adapter-pg": "^7.9.0",
+        "@prisma/client": "^7.9.0",
+        "class-transformer": "^0.5.1",
+        "class-validator": "^0.15.1",
+        "dotenv": "^17.4.2",
+        "pg": "^8.22.0",
+        "reflect-metadata": "^0.2.2",
+        "rxjs": "^7.8.2",
+        "set-cookie-parser": "^2.6.0",
+        "tiktoken": "^1.0.22"
+    },
+    "devDependencies": {
+        "@nestjs/cli": "^11.0.24",
+        "@nestjs/schematics": "^11.1.0",
+        "@nestjs/testing": "^11.1.28",
+        "@types/express": "^5.0.6",
+        "@types/jest": "^29.5.12",
+        "@types/node": "^22",
+        "@types/pg": "^8.20.0",
+        "@types/set-cookie-parser": "^2.4.7",
+        "jest": "^29.7.0",
+        "prisma": "^7.9.0",
+        "ts-jest": "^29.1.2",
+        "typescript": "^5.1.6"
+    },
+    "jest": {
+        "moduleFileExtensions": [
+            "js",
+            "json",
+            "ts"
+        ],
+        "rootDir": "src",
+        "testRegex": ".*\\.spec\\.ts$",
+        "transform": {
+            "^.+\\.(t|j)s$": "ts-jest"
+        },
+        "testEnvironment": "node"
+    }
+}

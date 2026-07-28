@@ -1,0 +1,38 @@
+{
+    "compilerOptions": {
+        // node16 rather than commonjs: it emits CommonJS but preserves dynamic import(),
+        // which is how the ESM-only pdfjs-dist is loaded.
+        "module": "node16",
+        "target": "es2022",
+        // "dom" is needed for real: turndown and jsdom expose DOM types, and the
+        // injected page scripts are typed against them.
+        "lib": ["es2022", "dom"],
+        "rootDir": "src",
+        "outDir": "dist",
+        "sourceMap": true,
+        "incremental": true,
+        // Inside outDir so `nest build`'s deleteOutDir clears it too. Left at the default
+        // location it survives the wipe, and tsc then skips emitting "unchanged" files —
+        // producing a dist/ that is missing most of the app.
+        "tsBuildInfoFile": "dist/.tsbuildinfo",
+        "declaration": false,
+        "removeComments": false,
+        "strict": true,
+        "noImplicitAny": false,
+        "strictNullChecks": true,
+        "strictBindCallApply": false,
+        "noImplicitReturns": true,
+        "noImplicitOverride": true,
+        "noUnusedLocals": false,
+        "forceConsistentCasingInFileNames": false,
+        "allowJs": true,
+        "skipLibCheck": true,
+        "esModuleInterop": true,
+        "useDefineForClassFields": false,
+        "experimentalDecorators": true,
+        "emitDecoratorMetadata": true,
+        "resolveJsonModule": true
+    },
+    "include": ["src/**/*"],
+    "exclude": ["node_modules", "dist", "test"]
+}
