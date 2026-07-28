@@ -1,0 +1,25 @@
+# The console: a browser UI exercising every capability the API exposes.
+#
+#   docker compose up --build          (from the repo root, which includes this file)
+#
+# It proxies /api to the backend over the compose network, so the browser only ever makes
+# same-origin requests and the backend needs no CORS for this deployment. Running the Vite
+# dev server instead (npm run dev) does the same thing via its own proxy.
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: substrate-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+    depends_on:
+      - backend
+    networks:
+      - substrate
+
+networks:
+  substrate:
+    name: substrate
