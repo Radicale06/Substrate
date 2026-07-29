@@ -151,7 +151,7 @@ curl -H 'X-With-Images-Download: true' 'http://127.0.0.1:3000/https://en.wikiped
 ```
 
 ```
-![Image 1](/instant-images/3fa77ab50d7e773ddefa2cfb9cf81397.jpg)
+![Image 1](/instant-images/8c/df/8cdfa1a2bfb2908fb82952c56039464b.jpg)
 ```
 
 **Every image on the page** is downloaded, not just the ones the extracted article links
@@ -164,7 +164,7 @@ happened to each one:
 ```jsonc
 {
   "sourceUrl": "https://i.guim.co.uk/img/media/…/master/5002.jpg?width=465",
-  "url":       "/instant-images/74f178462809acc85934e7f0f729c0a6.jpg",
+  "url":       "/instant-images/74/f1/74f178462809acc85934e7f0f729c0a6.jpg",
   "contentType": "image/jpeg",
   "bytes":  20094,
   "source": "fetch",        // or "browser" — bytes the render already paid for
