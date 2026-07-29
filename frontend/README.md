@@ -3,6 +3,13 @@
 A browser UI that exercises every capability the API exposes. React + Vite, no UI
 framework, no state library — the whole thing is seven panels over one typed API client.
 
+It looks like a terminal, because the thing it is a console *for* is an API you drive from
+a shell. Monospace throughout, near-black, one accent, rules instead of cards. No
+scanlines or phosphor glow: those read as nostalgia and cost real legibility on the long
+markdown this app exists to display. The look lives entirely in
+[src/index.css](src/index.css) — the panels are plain markup and none of them know about
+it, so restyling again means editing one file.
+
 ```bash
 docker compose up --build     # from the repo root
 ```

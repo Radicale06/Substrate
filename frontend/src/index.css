@@ -1,224 +1,376 @@
 /*
- * Design tokens first, components second. Both themes are defined because the page
- * follows the OS setting and the header toggle stamps data-theme on the root, which has
- * to win in either direction.
+ * A terminal, not a costume.
+ *
+ * The whole console is monospaced, near-black, and built from rules rather than cards —
+ * because the thing it is a console *for* is an API you drive from a shell, and a
+ * rounded-card dashboard was pretending otherwise. What it deliberately avoids: scanlines,
+ * phosphor glow, flicker. Those read as nostalgia and they cost real legibility on the
+ * long markdown dumps this app exists to display.
+ *
+ * Every class name here is the one the panels already use, and the five variables they
+ * reference from inline styles — --text-dim, --accent, --ok, --warn, --mono — keep their
+ * names. The markup did not have to change to get this, and it mostly did not.
+ *
+ * Both themes are defined: the page follows the OS and the header toggle stamps
+ * data-theme on the root, which has to win in either direction. Light is a light terminal
+ * profile, not a document.
  */
 :root {
-    --bg: #fbfbfd;
-    --surface: #ffffff;
-    --surface-2: #f4f4f7;
-    --border: #e3e3ea;
-    --text: #16161d;
-    --text-dim: #6b6b7b;
-    --accent: #4f46e5;
-    --accent-soft: #eef2ff;
-    --ok: #0f8a4d;
-    --warn: #b45309;
-    --err: #c62828;
-    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-    --radius: 10px;
-    --shadow: 0 1px 2px rgba(16, 16, 30, .06), 0 8px 24px rgba(16, 16, 30, .05);
+    --bg: #f4f4f1;
+    --surface: #fbfbf9;
+    --surface-2: #eaeae5;
+    --border: #dcdcd6;
+    --text: #16181c;
+    --text-dim: #6a707a;
+    --accent: #1a7f37;
+    --accent-soft: #e0f0e5;
+    --accent-ink: #ffffff;
+    --ok: #1a7f37;
+    --warn: #9a6700;
+    --err: #cf222e;
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, "JetBrains Mono", "Fira Code",
+        "Cascadia Mono", Menlo, Consolas, monospace;
+    --radius: 3px;
+    --shadow: none;
+    --glow: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
 @media (prefers-color-scheme: dark) {
     :root {
-        --bg: #0e0e13;
-        --surface: #16161d;
-        --surface-2: #1e1e27;
-        --border: #2b2b36;
-        --text: #ececf2;
-        --text-dim: #9a9aad;
-        --accent: #8b85f8;
-        --accent-soft: #232040;
-        --ok: #4ade80;
-        --warn: #fbbf24;
-        --err: #f87171;
-        --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px rgba(0, 0, 0, .3);
+        --bg: #08090b;
+        --surface: #0c0e12;
+        --surface-2: #121519;
+        --border: #1d2128;
+        --text: #ccd2dc;
+        --text-dim: #6b7480;
+        --accent: #56d364;
+        --accent-soft: #0f2416;
+        --accent-ink: #06120a;
+        --ok: #56d364;
+        --warn: #e3b341;
+        --err: #ff7b72;
+        --shadow: none;
     }
 }
 
 :root[data-theme="light"] {
-    --bg: #fbfbfd; --surface: #fff; --surface-2: #f4f4f7; --border: #e3e3ea;
-    --text: #16161d; --text-dim: #6b6b7b; --accent: #4f46e5; --accent-soft: #eef2ff;
-    --ok: #0f8a4d; --warn: #b45309; --err: #c62828;
-    --shadow: 0 1px 2px rgba(16, 16, 30, .06), 0 8px 24px rgba(16, 16, 30, .05);
+    --bg: #f4f4f1; --surface: #fbfbf9; --surface-2: #eaeae5; --border: #dcdcd6;
+    --text: #16181c; --text-dim: #6a707a; --accent: #1a7f37; --accent-soft: #e0f0e5;
+    --accent-ink: #ffffff; --ok: #1a7f37; --warn: #9a6700; --err: #cf222e; --shadow: none;
 }
 
 :root[data-theme="dark"] {
-    --bg: #0e0e13; --surface: #16161d; --surface-2: #1e1e27; --border: #2b2b36;
-    --text: #ececf2; --text-dim: #9a9aad; --accent: #8b85f8; --accent-soft: #232040;
-    --ok: #4ade80; --warn: #fbbf24; --err: #f87171;
-    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px rgba(0, 0, 0, .3);
+    --bg: #08090b; --surface: #0c0e12; --surface-2: #121519; --border: #1d2128;
+    --text: #ccd2dc; --text-dim: #6b7480; --accent: #56d364; --accent-soft: #0f2416;
+    --accent-ink: #06120a; --ok: #56d364; --warn: #e3b341; --err: #ff7b72; --shadow: none;
 }
 
 * { box-sizing: border-box; }
 
+/*
+ * Monospace everywhere is the single change that does most of the work. Everything below
+ * is detail on top of it.
+ */
 body {
     margin: 0;
     background: var(--bg);
     color: var(--text);
-    font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font: 13.5px/1.65 var(--mono);
+    font-variant-ligatures: none;
     -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
 }
+
+::selection { background: var(--accent); color: var(--accent-ink); }
+
+/* Thin, quiet, and always present — a scrollbar that appears on hover moves the layout. */
+* { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+*::-webkit-scrollbar { width: 9px; height: 9px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: var(--border); border-radius: 0; }
+*::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+@keyframes blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
 
 /* --- layout --- */
 
 .shell { max-width: 1180px; margin: 0 auto; padding: 0 24px 72px; }
 
+/*
+ * The masthead is a status line, the way tmux or a shell prompt puts state on one row:
+ * who you are on the left, what is up on the right, nothing in between.
+ */
 .masthead {
-    display: flex; align-items: center; gap: 16px;
-    padding: 28px 0 20px; flex-wrap: wrap;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    padding: 14px 0 13px; margin-bottom: 18px;
+    border-bottom: 1px solid var(--border);
 }
-.masthead h1 { font-size: 20px; margin: 0; letter-spacing: -.01em; }
-.masthead p { margin: 2px 0 0; color: var(--text-dim); font-size: 13px; }
+.masthead h1 {
+    font-size: 14px; margin: 0; font-weight: 700;
+    text-transform: lowercase; letter-spacing: .02em; color: var(--accent);
+}
+/* The cursor is the one piece of motion. It says "live" without animating content. */
+.masthead h1::after {
+    content: "▊"; margin-left: 2px; color: var(--accent);
+    animation: blink 1.15s steps(1) infinite;
+}
+.masthead p {
+    margin: 2px 0 0; color: var(--text-dim); font-size: 12px;
+}
+.masthead p::before { content: "// "; opacity: .6; }
 .masthead .spacer { flex: 1; }
 
+/* Tabs are a command list, and the active one carries the prompt. */
 .tabs {
-    display: flex; gap: 4px; overflow-x: auto; padding-bottom: 2px;
-    border-bottom: 1px solid var(--border); margin-bottom: 24px;
+    display: flex; gap: 2px; overflow-x: auto; padding-bottom: 0;
+    border-bottom: 1px solid var(--border); margin-bottom: 22px;
 }
 .tabs button {
     appearance: none; background: none; border: 0; cursor: pointer;
-    padding: 10px 14px; font: inherit; font-size: 14px; color: var(--text-dim);
+    padding: 8px 13px; font: inherit; font-size: 13px; color: var(--text-dim);
     border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap;
-    border-radius: 6px 6px 0 0;
+    border-radius: 0; text-transform: lowercase; transition: color .12s, background .12s;
 }
+.tabs button::before { content: "  "; white-space: pre; }
 .tabs button:hover { color: var(--text); background: var(--surface-2); }
-.tabs button[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
+.tabs button[aria-selected="true"] {
+    color: var(--accent); border-bottom-color: var(--accent); background: var(--accent-soft);
+}
+.tabs button[aria-selected="true"]::before { content: "❯ "; white-space: pre; }
 
-.panel-intro { margin: 0 0 20px; color: var(--text-dim); max-width: 68ch; font-size: 14px; }
-.panel-intro code { font-size: 12.5px; }
+/*
+ * Prose that introduces a panel reads as a comment block, because that is what it is —
+ * a hairline, the same weight as every other rule here, not a bar.
+ */
+.panel-intro {
+    margin: 0 0 22px; color: var(--text-dim); max-width: 76ch; font-size: 12.5px;
+    padding-left: 13px; border-left: 1px solid var(--border);
+}
+.panel-intro code { font-size: 12.5px; color: var(--text); }
 
-.split { display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); gap: 24px; align-items: start; }
+.split { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 20px; align-items: start; }
 @media (max-width: 900px) { .split { grid-template-columns: minmax(0, 1fr); } }
 
 /* --- surfaces --- */
 
 .card {
     background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow);
+    border-radius: var(--radius); padding: 15px 16px 17px;
 }
-.card + .card { margin-top: 16px; }
-.card h3 { margin: 0 0 14px; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-dim); }
+.card + .card { margin-top: 14px; }
+
+/*
+ * `── TITLE ─────────────` — the rule is a flexed pseudo-element rather than box-drawing
+ * characters, so it stretches to the card instead of guessing a character count.
+ */
+.card h3 {
+    display: flex; align-items: center; gap: 9px;
+    margin: 0 0 14px; font-size: 11.5px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .12em; color: var(--text-dim);
+}
+.card h3::before { content: "──"; color: var(--border); letter-spacing: 0; }
+.card h3::after {
+    content: ""; flex: 1; height: 1px; background: var(--border);
+}
 
 /* --- form controls --- */
 
-label.field { display: block; margin-bottom: 14px; }
-label.field > span { display: block; font-size: 12.5px; color: var(--text-dim); margin-bottom: 5px; }
+label.field { display: block; margin-bottom: 13px; }
+label.field > span {
+    display: block; font-size: 11.5px; color: var(--text-dim); margin-bottom: 5px;
+    text-transform: lowercase;
+}
+label.field > span::before { content: "› "; opacity: .55; }
 
 input[type="text"], input[type="number"], textarea, select {
-    width: 100%; padding: 9px 11px; font: inherit; font-size: 14px;
+    width: 100%; padding: 8px 10px; font: inherit; font-size: 13px;
     color: var(--text); background: var(--surface-2);
-    border: 1px solid var(--border); border-radius: 8px;
+    border: 1px solid var(--border); border-radius: var(--radius);
+    transition: border-color .12s, background .12s, box-shadow .12s;
 }
+input::placeholder, textarea::placeholder { color: var(--text-dim); opacity: .65; }
+
+/*
+ * The whole border takes the accent, not one edge of it. A single accented side reads as
+ * decoration, and it was also carrying focus indication by itself here — the default
+ * outline is suppressed, so this ring is the indicator, not a flourish on top of one.
+ */
 input:focus, textarea:focus, select:focus {
-    outline: 2px solid var(--accent); outline-offset: -1px; background: var(--surface);
+    outline: none; background: var(--surface);
+    border-color: var(--accent); box-shadow: var(--glow);
 }
-textarea { resize: vertical; min-height: 90px; font-family: var(--mono); font-size: 13px; }
+textarea { resize: vertical; min-height: 88px; font-size: 12.5px; line-height: 1.6; }
+select { cursor: pointer; }
 
-.checks { display: grid; gap: 8px; }
-.check { display: flex; align-items: center; gap: 8px; font-size: 13.5px; cursor: pointer; }
-.check input { width: 15px; height: 15px; accent-color: var(--accent); margin: 0; cursor: pointer; }
-
-button.primary {
-    width: 100%; padding: 10px 16px; font: inherit; font-weight: 600; font-size: 14px;
-    color: #fff; background: var(--accent); border: 0; border-radius: 8px; cursor: pointer;
+.checks { display: grid; gap: 7px; }
+.check {
+    display: flex; align-items: center; gap: 8px; font-size: 12.5px; cursor: pointer;
+    color: var(--text-dim); transition: color .12s;
 }
-button.primary:hover:not(:disabled) { filter: brightness(1.08); }
-button.primary:disabled { opacity: .55; cursor: not-allowed; }
-
-button.ghost {
-    padding: 6px 11px; font: inherit; font-size: 13px; color: var(--text-dim);
+.check:hover { color: var(--text); }
+/* `[x]`, drawn rather than borrowed from the OS, so the checks match everything else. */
+.check input {
+    appearance: none; -webkit-appearance: none;
+    width: 15px; height: 15px; margin: 0; cursor: pointer; flex: none;
+    display: grid; place-content: center;
     background: var(--surface-2); border: 1px solid var(--border);
-    border-radius: 7px; cursor: pointer;
+    border-radius: 2px; transition: border-color .12s, background .12s;
 }
-button.ghost:hover { color: var(--text); }
+.check input::before { content: "×"; font-size: 14px; line-height: 1; color: transparent; }
+.check input:checked { border-color: var(--accent); background: var(--accent-soft); }
+.check input:checked::before { color: var(--accent); }
+.check input:focus-visible { outline: none; border-color: var(--accent); box-shadow: var(--glow); }
+
+/*
+ * The primary action is outlined, not filled.
+ *
+ * A full-width block of saturated accent was the loudest thing on a page whose entire
+ * palette is two greys and one green — it read as a web form's submit button parachuted
+ * into a terminal. Outlined at rest, filled on hover: the same way a TUI shows the item
+ * you are about to activate.
+ */
+button.primary {
+    width: 100%; padding: 9px 16px; font: inherit; font-weight: 700; font-size: 13px;
+    color: var(--accent); background: var(--accent-soft); border: 1px solid var(--accent);
+    border-radius: var(--radius); cursor: pointer; text-transform: lowercase;
+    letter-spacing: .02em; transition: background .12s, color .12s;
+}
+button.primary::before { content: "❯ "; opacity: .55; }
+button.primary:hover:not(:disabled) { background: var(--accent); color: var(--accent-ink); }
+button.primary:focus-visible { outline: none; box-shadow: var(--glow), 0 0 0 3px var(--accent-soft); }
+button.primary:disabled { opacity: .4; cursor: not-allowed; }
+
+/* Secondary actions are bracketed, the way a TUI marks a soft key. */
+button.ghost {
+    padding: 5px 10px; font: inherit; font-size: 12px; color: var(--text-dim);
+    background: transparent; border: 1px solid var(--border);
+    border-radius: var(--radius); cursor: pointer; text-transform: lowercase;
+    transition: color .12s, border-color .12s;
+}
+button.ghost::before { content: "["; margin-right: 5px; opacity: .5; }
+button.ghost::after { content: "]"; margin-left: 5px; opacity: .5; }
+button.ghost:hover { color: var(--accent); border-color: var(--accent); }
+button.ghost:disabled { opacity: .45; cursor: not-allowed; }
 
 /* --- readouts --- */
 
-.badges { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+.badges { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 13px; }
 .badge {
-    font-size: 11.5px; padding: 3px 8px; border-radius: 999px;
+    font-size: 11px; padding: 2px 7px; border-radius: var(--radius);
     background: var(--surface-2); color: var(--text-dim); border: 1px solid var(--border);
-    white-space: nowrap;
+    white-space: nowrap; text-transform: lowercase; letter-spacing: .01em;
 }
-.badge.ok { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 35%, transparent); }
-.badge.warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 35%, transparent); }
-.badge.err { color: var(--err); border-color: color-mix(in srgb, var(--err) 35%, transparent); }
+/* A live dot, the way a status line shows a healthy service. */
+.badge.ok::before {
+    content: "●"; margin-right: 5px; color: var(--ok); font-size: 9px;
+    animation: pulse 2.4s ease-in-out infinite;
+}
+.badge.ok { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 32%, transparent); }
+.badge.warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 32%, transparent); }
+.badge.warn::before { content: "▲"; margin-right: 5px; font-size: 9px; }
+.badge.err { color: var(--err); border-color: color-mix(in srgb, var(--err) 32%, transparent); }
+.badge.err::before { content: "✕"; margin-right: 5px; font-size: 9px; }
 .badge.accent { color: var(--accent); background: var(--accent-soft); border-color: transparent; }
 
+/*
+ * Raw output is the one place the terminal is literal: a stream in a pane, and nothing
+ * decorating it. Output does not get a coloured bar in a terminal — it gets read.
+ */
 pre.output {
-    margin: 0; padding: 14px; max-height: 62vh; overflow: auto;
-    background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px;
-    font-family: var(--mono); font-size: 12.5px; line-height: 1.55;
-    white-space: pre-wrap; word-break: break-word;
+    margin: 0; padding: 12px 14px; max-height: 62vh; overflow: auto;
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: var(--mono); font-size: 12px; line-height: 1.65;
+    white-space: pre-wrap; word-break: break-word; color: var(--text);
 }
 
+/* Severity is carried by the glyph, the text and the border tint — three signals already. */
 .notice {
-    padding: 12px 14px; border-radius: 8px; font-size: 13.5px;
+    padding: 10px 13px; border-radius: var(--radius); font-size: 12.5px;
     border: 1px solid var(--border); background: var(--surface-2);
 }
-.notice.err { color: var(--err); border-color: color-mix(in srgb, var(--err) 35%, transparent); }
-.notice.warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 35%, transparent); }
-.notice code { font-size: 12.5px; }
+.notice.err { color: var(--err); border-color: color-mix(in srgb, var(--err) 32%, transparent); }
+.notice.err::before { content: "✕ "; font-weight: 700; }
+.notice.warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 32%, transparent); }
+.notice.warn::before { content: "▲ "; font-weight: 700; }
+.notice code { font-size: 12px; }
 
-.empty { color: var(--text-dim); font-size: 14px; text-align: center; padding: 48px 16px; }
+.empty { color: var(--text-dim); font-size: 12.5px; text-align: center; padding: 30px 16px; opacity: .8; }
+.empty::before { content: "— "; }
+.empty::after { content: " —"; }
 
 /* --- capability-specific --- */
 
-.hits { display: grid; gap: 12px; }
-.hit { border: 1px solid var(--border); border-radius: 8px; padding: 13px; background: var(--surface); }
-.hit a { color: var(--accent); text-decoration: none; font-weight: 600; font-size: 14.5px; }
+.hits { display: grid; gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--radius); }
+.hit { padding: 12px 13px; background: var(--surface); }
+.hit a { color: var(--accent); text-decoration: none; font-weight: 700; font-size: 13px; }
 .hit a:hover { text-decoration: underline; }
-.hit .url { font-size: 12px; color: var(--text-dim); word-break: break-all; margin: 3px 0 7px; }
-.hit p { margin: 0; font-size: 13.5px; color: var(--text-dim); }
+.hit .url { font-size: 11.5px; color: var(--text-dim); word-break: break-all; margin: 3px 0 7px; }
+.hit p { margin: 0; font-size: 12.5px; color: var(--text-dim); }
 
 /*
- * Chunks read as a numbered sequence, so the index carries the structure and the cards
- * themselves stay quiet — a coloured edge-stripe would compete with the text for no
- * information gain.
+ * Chunks read as a numbered sequence, so the index carries the structure and the rows stay
+ * quiet — a pager, essentially, with the ordinal in a gutter.
  */
-.chunks { display: grid; gap: 2px; }
-.chunk { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 12px; padding: 10px 12px; border-radius: 6px; }
+.chunks { display: grid; gap: 0; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.chunk { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 12px; padding: 8px 12px; }
 .chunk:nth-child(odd) { background: var(--surface-2); }
-.chunk .meta { font-size: 11.5px; color: var(--text-dim); font-family: var(--mono); text-align: right; padding-top: 1px; }
-.chunk .body { font-size: 13px; white-space: pre-wrap; word-break: break-word; }
-.chunk .body .span { display: block; font-size: 11px; color: var(--text-dim); font-family: var(--mono); margin-top: 4px; }
+.chunk .meta { font-size: 11px; color: var(--text-dim); text-align: right; padding-top: 1px; opacity: .8; }
+.chunk .body { font-size: 12.5px; white-space: pre-wrap; word-break: break-word; }
+.chunk .body .span { display: block; font-size: 10.5px; color: var(--text-dim); margin-top: 4px; opacity: .8; }
 
-.gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 10px; }
-.tile { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface-2); }
+.gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 8px; }
+.tile { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--surface-2); }
 .tile img { display: block; width: 100%; height: 104px; object-fit: cover; background: var(--surface-2); }
-.tile .meta { padding: 6px 8px; font-size: 11px; color: var(--text-dim); font-family: var(--mono); }
+.tile .meta { padding: 5px 7px; font-size: 10.5px; color: var(--text-dim); }
 
-.scores { display: grid; gap: 8px; }
-.score { border: 1px solid var(--border); border-radius: 8px; padding: 11px 13px; background: var(--surface); }
-.score .head { display: flex; align-items: center; gap: 10px; margin-bottom: 7px; }
-.score .rank { font-size: 12px; color: var(--text-dim); font-family: var(--mono); }
-.score .value { font-family: var(--mono); font-size: 13px; font-weight: 600; margin-left: auto; }
-.score .body { font-size: 13.5px; }
-.bar { height: 5px; border-radius: 999px; background: var(--surface-2); overflow: hidden; margin-top: 8px; }
-.bar > i { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+.scores { display: grid; gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--radius); }
+.score { padding: 11px 13px; background: var(--surface); }
+.score .head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.score .rank { font-size: 11.5px; color: var(--accent); }
+.score .value { font-size: 12.5px; font-weight: 700; margin-left: auto; }
+.score .body { font-size: 12.5px; }
+/* A meter drawn the way a TUI draws one: a track that is visibly a track. */
+.bar { height: 4px; border-radius: 0; background: var(--surface-2); overflow: hidden; margin-top: 8px; border: 1px solid var(--border); }
+.bar > i { display: block; height: 100%; background: var(--accent); border-radius: 0; }
 
-/* A vector, drawn as signed bars from a centre line. */
+/*
+ * A vector, drawn as signed bars from a centre line.
+ *
+ * The bar is centred and then shifted by half its OWN height, so positive bars sit with
+ * their base on the centre line and negative bars hang from it. Percentages in `transform`
+ * resolve against the element's own box, which is the property that makes this work —
+ * percentages in `margin` resolve against the container's *width*, so positioning these
+ * with `margin-top: 50%` pushed every bar hundreds of pixels below a 44px-tall clipped
+ * container and drew nothing at all.
+ */
 .vector-plot {
     display: flex; align-items: center; gap: 1px;
-    padding: 0 2px; border: 1px solid var(--border); border-radius: 6px;
+    padding: 0 2px; border: 1px solid var(--border); border-radius: var(--radius);
     background: var(--surface-2); overflow: hidden;
 }
-.vector-plot > i { flex: 1 1 0; min-width: 1px; border-radius: 1px; align-self: center; }
+.vector-plot > i { flex: 1 1 0; min-width: 1px; border-radius: 0; align-self: center; }
 .vector-plot > i.up { background: var(--accent); transform: translateY(-50%); }
 .vector-plot > i.down { background: var(--warn); transform: translateY(50%); }
-.vector-meta { margin: 5px 0 0; font-family: var(--mono); font-size: 11px; color: var(--text-dim); }
+.vector-meta { margin: 5px 0 0; font-size: 10.5px; color: var(--text-dim); }
 
-.matrix { border-collapse: collapse; width: 100%; font-size: 13px; }
-.matrix th, .matrix td { border: 1px solid var(--border); padding: 7px 9px; text-align: left; }
-.matrix th { background: var(--surface-2); font-weight: 600; color: var(--text-dim); font-size: 12px; }
-.matrix td.num { font-family: var(--mono); text-align: right; }
+/* Hairline rules and tabular figures: a readout, not a spreadsheet. */
+.matrix { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+.matrix th, .matrix td { border: 1px solid var(--border); padding: 6px 9px; text-align: left; }
+.matrix th { background: var(--surface-2); font-weight: 700; color: var(--text-dim); font-size: 11.5px; text-transform: lowercase; }
+.matrix td.num { text-align: right; font-variant-numeric: tabular-nums; }
 
-.shot { max-width: 100%; border: 1px solid var(--border); border-radius: 8px; display: block; }
+.shot { max-width: 100%; border: 1px solid var(--border); border-radius: var(--radius); display: block; }
 
-.rows { display: grid; gap: 6px; }
-.row { display: flex; gap: 10px; align-items: baseline; font-size: 13px; padding: 7px 0; border-bottom: 1px solid var(--border); }
+/* Key/value rows, aligned like a config dump. */
+.rows { display: grid; gap: 0; }
+.row { display: flex; gap: 12px; align-items: baseline; font-size: 12.5px; padding: 6px 0; border-bottom: 1px solid var(--border); }
 .row:last-child { border-bottom: 0; }
-.row .k { color: var(--text-dim); min-width: 118px; font-size: 12.5px; }
+.row .k { color: var(--text-dim); min-width: 122px; font-size: 12px; }
+.row .k::before { content: "› "; opacity: .5; }
 .row .v { word-break: break-all; }
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+}
