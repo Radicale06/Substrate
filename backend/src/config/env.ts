@@ -39,7 +39,7 @@ export const env = {
 
     /**
      * The segmenter service, which owns token counting and chunking. Needed by
-     * /v1/segment and by the chunking half of /v1/embeddings.
+     * /v1/segment.
      */
     segmenterUrl: process.env.SEGMENTER_URL?.replace(/\/$/, '') || undefined,
     /** Shared secret for the segmenter service, when it requires one. */

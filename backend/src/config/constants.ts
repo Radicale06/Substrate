@@ -32,7 +32,11 @@ export const READER_IMAGE_DOWNLOAD_SLACK_MS = 60_000;
 
 /** Model inference is slower than a normal HTTP call, especially on CPU. */
 export const INFERENCE_TIMEOUT_MS = 120_000;
-/** Texts accepted in one /v1/embeddings call. */
+/**
+ * Texts accepted in one /v1/embeddings call. A caller embedding a segmented document
+ * batches its chunks at this size; the endpoint does not batch on their behalf, because
+ * hiding the cost would not make it smaller.
+ */
 export const EMBEDDINGS_MAX_INPUTS = 256;
 /** Documents accepted in one /v1/rerank call. */
 export const RERANK_MAX_DOCUMENTS = 200;
@@ -75,23 +79,3 @@ export const STATUS_CACHE_MS = 5_000;
  */
 export const SEGMENTER_TIMEOUT_MS = 180_000;
 
-// --- Chunk-and-embed pipeline ---
-
-/**
- * Chunks embedded in one /v1/embeddings call. Each carries a full vector, so this bounds
- * the response as much as the work: 500 chunks at 1024 dimensions is already ~4MB of JSON.
- */
-export const EMBED_MAX_CHUNKS = 500;
-
-/**
- * Chunks sent to the model service per call.
- *
- * The service embeds everything in a request before answering, so one call carrying a
- * whole article's chunks runs for minutes on CPU and trips the inference timeout — which
- * looked like a broken pipeline rather than a slow one. Batching bounds each call instead
- * of the total, which is the part that has to fit in a timeout.
- */
-export const EMBED_BATCH_SIZE = 32;
-
-/** Ceiling on a whole chunk-and-embed request, however many batches it takes. */
-export const EMBED_TOTAL_TIMEOUT_MS = 600_000;
