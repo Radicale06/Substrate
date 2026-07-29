@@ -19,6 +19,14 @@ export class NotFoundError extends Error {
     }
 }
 
+/** The request conflicts with existing state, and retrying will not help. Maps to 409. */
+export class ConflictError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'ConflictError';
+    }
+}
+
 /** A request tried to reach somewhere it must not. Maps to 403. */
 export class SecurityCompromiseError extends Error {
     constructor(message: string) {
@@ -46,6 +54,7 @@ export class UpstreamFailureError extends Error {
 /** The domain error types above, as a set the catch-and-rethrow sites can test against. */
 const DOMAIN_ERRORS = [
     BadRequestError,
+    ConflictError,
     NotFoundError,
     SecurityCompromiseError,
     ServiceCrashedError,

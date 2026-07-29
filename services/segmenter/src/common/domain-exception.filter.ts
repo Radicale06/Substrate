@@ -9,6 +9,7 @@ import {
 import type { Request, Response } from 'express';
 import {
     BadRequestError,
+    ConflictError,
     NotFoundError,
     SecurityCompromiseError,
     ServiceCrashedError,
@@ -20,6 +21,7 @@ import { sendJsonError, sendText, wantsJson } from './http-response';
 const STATUS_BY_ERROR: Array<[new (...args: any[]) => Error, HttpStatus]> = [
     [BadRequestError, HttpStatus.BAD_REQUEST],
     [NotFoundError, HttpStatus.NOT_FOUND],
+    [ConflictError, HttpStatus.CONFLICT],
     [SecurityCompromiseError, HttpStatus.FORBIDDEN],
     [ServiceCrashedError, HttpStatus.SERVICE_UNAVAILABLE],
     [UpstreamFailureError, HttpStatus.BAD_GATEWAY],
