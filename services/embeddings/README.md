@@ -25,12 +25,19 @@ curl -X POST http://localhost:8000/v1/embeddings \
 
 ## Default model
 
-`Qwen/Qwen3-Embedding-0.6B` — **Apache-2.0**, 32k context, 1024 dimensions with
-Matryoshka support down to 32. Swap it with `MODEL_ID`; any sentence-transformers model
-works.
+`microsoft/harrier-oss-v1-0.6b` — **MIT**, 1024 dimensions. Swap it with `MODEL_ID`; any
+sentence-transformers model works.
 
-Notably *not* used: `jina-embeddings-v3` and the v5 family are CC-BY-NC, so they cannot
-be a default for a commercially usable project.
+It does not document Matryoshka, so `SUPPORTS_MRL` defaults to false and `dimensions` is
+**rejected with a 400** rather than answered. `Qwen/Qwen3-Embedding-0.6B` (Apache-2.0,
+32k context, MRL down to 32) remains a one-variable swap if you need truncation:
+
+```bash
+EMBEDDINGS_MODEL_ID=Qwen/Qwen3-Embedding-0.6B EMBEDDINGS_SUPPORTS_MRL=true
+```
+
+Notably *not* used: `jina-embeddings-v3` and the v5 family are CC-BY-NC — whatever the
+blog posts say — so they cannot be a default for a commercially usable project.
 
 ## Two details that matter
 
@@ -41,6 +48,15 @@ be a default for a commercially usable project.
   slice of it is not unit length, and skipping the re-normalization makes cosine
   similarity subtly wrong. Store the dimension you chose alongside the vectors — vectors
   of different lengths are not comparable.
+- **Truncation is refused unless the model was trained for it.** This is why `SUPPORTS_MRL`
+  exists rather than being inferred: slicing *any* embedding works arithmetically, and
+  re-normalizing gives back a unit vector of exactly the requested size, so a non-Matryoshka
+  model fails by returning a plausible answer whose retrieval quality has collapsed. There
+  is no way to detect that from the model files, and a wrong guess is invisible until
+  recall is bad in production — so it is declared, not detected.
+- **It does not chunk.** Text in, vectors out. Splitting is `/v1/segment` and storing is
+  `/v1/vectors`; each stays separately useful, and you keep the chunk text — which is what
+  you actually want beside the vector.
 
 ## Configuration
 
@@ -49,11 +65,12 @@ host variable onto the unprefixed one the app reads, so the two columns differ:
 
 | In `.env` (Compose) | Read by the app | Default | Purpose |
 |---|---|---|---|
-| `EMBEDDINGS_MODEL_ID` | `MODEL_ID` | `Qwen/Qwen3-Embedding-0.6B` | Any sentence-transformers model |
+| `EMBEDDINGS_MODEL_ID` | `MODEL_ID` | `microsoft/harrier-oss-v1-0.6b` | Any sentence-transformers model |
 | `EMBEDDINGS_DEVICE` | `MODEL_DEVICE` | `cpu` | `cuda` if you have a GPU |
 | `EMBEDDINGS_BATCH_SIZE` | `MAX_BATCH_SIZE` | `32` | Texts encoded per forward pass |
 | `EMBEDDINGS_MAX_INPUTS` | `MAX_INPUTS` | `256` | Inputs accepted in one request |
 | `EMBEDDINGS_USE_INSTRUCTION` | `USE_INSTRUCTION` | `true` | Set `false` for models that do not want a prefix |
+| `EMBEDDINGS_SUPPORTS_MRL` | `SUPPORTS_MRL` | `false` | Set `true` only for models documenting Matryoshka |
 | `EMBEDDINGS_INSTRUCTION` | `DEFAULT_INSTRUCTION` | *(built-in)* | Overrides the retrieval instruction |
 | `INFERENCE_API_KEY` | *(same)* | *(unset)* | When set, requires `Authorization: Bearer <key>` |
 

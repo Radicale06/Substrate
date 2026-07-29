@@ -19,7 +19,10 @@ class EmbeddingsRequest(BaseModel):
     dimensions: int | None = Field(
         None,
         ge=1,
-        description="Truncate to this many dimensions (Matryoshka), then re-normalize",
+        description=(
+            "Truncate to this many dimensions (Matryoshka), then re-normalize. "
+            "Only accepted when the loaded model documents MRL; see SUPPORTS_MRL."
+        ),
     )
     instruction: str | None = Field(
         None, description="Overrides the default instruction for query inputs"
@@ -49,3 +52,4 @@ class HealthResponse(BaseModel):
     model: str
     dimensions: int
     device: str
+    supports_mrl: bool

@@ -61,6 +61,7 @@ async def health() -> HealthResponse:
         model=settings.model_id,
         dimensions=embedder.dimensions,
         device=embedder.device,
+        supports_mrl=settings.supports_mrl,
     )
 
 
@@ -81,6 +82,18 @@ async def create_embeddings(request: EmbeddingsRequest) -> EmbeddingsResponse:
         )
     if any(not isinstance(text, str) or not text.strip() for text in texts):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Every input must be a non-empty string")
+    # Refused rather than ignored. A caller asking for 256 dimensions and silently
+    # receiving 1024 would index vectors of the wrong shape; a caller silently
+    # receiving a truncated non-MRL vector would index vectors of the right shape and
+    # the wrong meaning. Both are worse than an error naming the setting.
+    if request.dimensions is not None and not settings.supports_mrl:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            f"{settings.model_id} does not document Matryoshka truncation, so "
+            '"dimensions" is refused. Set SUPPORTS_MRL=true if this model supports it, '
+            "or use a model that does (for example Qwen/Qwen3-Embedding-0.6B).",
+        )
+
     if not embedder.ready:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Model is still loading")
 
