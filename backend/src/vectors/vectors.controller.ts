@@ -2,11 +2,17 @@ import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post } from
 import { BadRequestError } from '../common/errors';
 import { VectorsClient } from './vectors.client';
 
-/** Collection names reach a SQL identifier, so they are constrained rather than escaped. */
+/**
+ * Collection names reach a SQL identifier, so they are constrained rather than escaped.
+ *
+ * The store enforces this too, and independently — it is reachable on the compose network
+ * without going through here, and it is the process that hands the name to a driver that
+ * interpolates it into raw SQL.
+ */
 const COLLECTION_NAME = /^[a-zA-Z][a-zA-Z0-9_]{0,62}$/;
 
-function assertName(name: string): string {
-    if (!COLLECTION_NAME.test(name)) {
+function assertName(name: unknown): string {
+    if (typeof name !== 'string' || !COLLECTION_NAME.test(name)) {
         throw new BadRequestError(
             'A collection name must start with a letter and contain only letters, digits '
             + 'and underscores, up to 63 characters.',
@@ -36,10 +42,17 @@ export class VectorsController {
         return this.vectors.request('GET', '/v1/collections');
     }
 
+    /**
+     * The name arrives in the body here rather than the path, which is exactly how it
+     * escaped the check every other route applies — and this is the route that turns it
+     * into a Postgres identifier, so it was the one that most needed it.
+     */
     @Post('collections')
     @HttpCode(HttpStatus.OK)
     async createCollection(@Body() body: any) {
-        return this.vectors.request('POST', '/v1/collections', body ?? {});
+        assertName(body?.name);
+
+        return this.vectors.request('POST', '/v1/collections', body);
     }
 
     @Delete('collections/:name')

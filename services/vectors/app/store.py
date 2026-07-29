@@ -6,6 +6,7 @@ embedding model does not require this service to know anything about it.
 """
 
 import logging
+import re
 import threading
 from typing import Any
 
@@ -17,10 +18,21 @@ from .dsn import normalize_dsn
 
 logger = logging.getLogger("vectors.store")
 
+# Enforced here, not only at the API edge, because this is the last point before the name
+# becomes a Postgres identifier -- and vecs interpolates it into raw SQL to build an index
+# (`on vecs."{name}"`), so a name containing a double quote closes the identifier and the
+# remainder is parsed as SQL. Same rule as the backend applies to its path parameters; it
+# lives in both places because this service is independently reachable.
+_VALID_NAME = re.compile(r"^[a-zA-Z][a-zA-Z0-9_]{0,62}$")
+
 # Cosine everywhere. The measure used to build the index and the measure used to query
 # must agree, or pgvector silently ignores the index and sequentially scans the table --
 # vecs emits a UserWarning that is easy to never see in container logs.
 MEASURE = IndexMeasure.cosine_distance
+
+
+class InvalidName(Exception):
+    """A collection name that must not reach a SQL identifier."""
 
 
 class DimensionMismatch(Exception):
@@ -70,6 +82,16 @@ class VectorStore:
             )
         return self._client
 
+    @staticmethod
+    def _valid(name: str) -> str:
+        if not _VALID_NAME.match(name or ""):
+            raise InvalidName(
+                "A collection name must start with a letter and contain only letters, "
+                "digits and underscores, up to 63 characters."
+            )
+
+        return name
+
     def collection(self, name: str, dimension: int | None = None):
         """
         Returns a collection handle, creating it when a dimension is supplied.
@@ -78,6 +100,7 @@ class VectorStore:
         every time, and an upsert of one batch would otherwise pay for it repeatedly.
         """
         client = self._require_client()
+        self._valid(name)
 
         cached = self._collections.get(name)
         if cached is not None:
@@ -110,7 +133,7 @@ class VectorStore:
 
     def delete_collection(self, name: str) -> None:
         client = self._require_client()
-        client.delete_collection(name)
+        client.delete_collection(self._valid(name))
         self._collections.pop(name, None)
 
     def upsert(self, name: str, records: list[tuple[str, list[float], dict]]) -> int:
@@ -176,6 +199,7 @@ class VectorStore:
         CREATE INDEX without CONCURRENTLY, which takes an exclusive lock and blocks
         writes for as long as the build takes. On an empty collection that is instant; on
         a populated one it is an outage, and the caller should choose when to pay it.
+
         """
         collection = self.collection(name)
         collection.create_index(
@@ -184,6 +208,5 @@ class VectorStore:
             index_arguments=IndexArgsHNSW(m=16, ef_construction=64),
             replace=replace,
         )
-
 
 store = VectorStore()

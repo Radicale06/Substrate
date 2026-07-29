@@ -1,8 +1,19 @@
 """Request and response shapes for the vector store."""
 
-from typing import Any
+from typing import Annotated, Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StringConstraints
+
+# A collection name becomes a Postgres table name in the `vecs` schema, and vecs
+# interpolates it into raw SQL when it builds an index -- `on vecs."{name}"`, an f-string,
+# not a bound parameter. A name carrying a double quote therefore closes the identifier and
+# the rest of it is parsed as SQL. Constrained to an identifier here rather than escaped,
+# because escaping correctly for every place vecs puts this string is not something this
+# service can promise.
+CollectionName = Annotated[
+    str,
+    StringConstraints(pattern=r"^[a-zA-Z][a-zA-Z0-9_]{0,62}$"),
+]
 
 
 class HealthResponse(BaseModel):
@@ -17,7 +28,7 @@ class CollectionInfo(BaseModel):
 
 
 class CreateCollectionRequest(BaseModel):
-    name: str = Field(..., min_length=1, max_length=63)
+    name: CollectionName
     dimension: int = Field(..., ge=1)
     index: bool = Field(
         True,

@@ -29,7 +29,7 @@ from .schemas import (
     UpsertRequest,
     UpsertResponse,
 )
-from .store import DimensionMismatch, NotConfigured, store
+from .store import DimensionMismatch, InvalidName, NotConfigured, store
 
 logging.basicConfig(
     level=logging.INFO,
@@ -68,6 +68,8 @@ def _guard(exc: Exception) -> HTTPException:
     """Maps store failures onto the status codes the backend already knows how to map."""
     if isinstance(exc, NotConfigured):
         return HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(exc))
+    if isinstance(exc, InvalidName):
+        return HTTPException(status.HTTP_400_BAD_REQUEST, str(exc))
     if isinstance(exc, DimensionMismatch):
         return HTTPException(status.HTTP_409_CONFLICT, str(exc))
     if isinstance(exc, KeyError):
