@@ -315,6 +315,57 @@ export const api = {
     },
 };
 
+export interface VectorCollection {
+    name: string;
+    dimension: number;
+}
+
+export interface VectorMatch {
+    id: string;
+    distance: number;
+    similarity: number;
+    metadata: Record<string, unknown>;
+}
+
+export const vectors = {
+    async collections(): Promise<VectorCollection[]> {
+        return call('GET', '/v1/vectors/collections');
+    },
+
+    async createCollection(name: string, dimension: number): Promise<VectorCollection> {
+        return call('POST', '/v1/vectors/collections', { name, dimension, index: true });
+    },
+
+    async upsert(
+        name: string,
+        records: Array<{ id: string; vector: number[]; metadata?: Record<string, unknown>; }>,
+    ): Promise<{ upserted: number; }> {
+        return call('POST', `/v1/vectors/collections/${name}/upsert`, { records });
+    },
+
+    async query(name: string, vector: number[], limit: number): Promise<{ matches: VectorMatch[]; }> {
+        return call('POST', `/v1/vectors/collections/${name}/query`, { vector, limit });
+    },
+
+    async drop(name: string): Promise<void> {
+        await call('DELETE', `/v1/vectors/collections/${name}`);
+    },
+};
+
+/** Shared request shape for the vector endpoints, which all behave the same way. */
+async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
+    const response = await fetch(`${BASE}${path}`, {
+        method,
+        headers: body === undefined ? {} : { 'content-type': 'application/json' },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    });
+    if (!response.ok) {
+        throw new ApiError(response.status, await readError(response));
+    }
+
+    return response.status === 204 ? undefined as T : response.json();
+}
+
 /** Cosine similarity, for showing what an embedding is actually good for. */
 export function cosineSimilarity(a: number[], b: number[]): number {
     let dot = 0;

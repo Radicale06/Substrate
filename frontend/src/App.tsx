@@ -7,12 +7,14 @@ import { RerankPanel } from './panels/RerankPanel';
 import { SearchPanel } from './panels/SearchPanel';
 import { SegmentPanel } from './panels/SegmentPanel';
 import { StatusPanel } from './panels/StatusPanel';
+import { VectorsPanel } from './panels/VectorsPanel';
 
 const TABS = [
     { id: 'reader', label: 'Reader', render: () => <ReaderPanel /> },
     { id: 'search', label: 'Search', render: () => <SearchPanel /> },
     { id: 'segment', label: 'Segmenter', render: () => <SegmentPanel /> },
     { id: 'embeddings', label: 'Embeddings', render: () => <EmbeddingsPanel /> },
+    { id: 'vectors', label: 'Vectors', render: () => <VectorsPanel /> },
     { id: 'rerank', label: 'Reranker', render: () => <RerankPanel /> },
     { id: 'status', label: 'Status', render: () => <StatusPanel /> },
 ] as const;

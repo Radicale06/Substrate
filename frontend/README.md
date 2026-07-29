@@ -1,7 +1,7 @@
 # Substrate — console
 
 A browser UI that exercises every capability the API exposes. React + Vite, no UI
-framework, no state library — the whole thing is five panels over one typed API client.
+framework, no state library — the whole thing is seven panels over one typed API client.
 
 ```bash
 docker compose up --build     # from the repo root
@@ -16,7 +16,8 @@ Then open **http://localhost:5173**.
 | Reader | `GET /<url>` | Every response format and `X-*` option, with cache status and timing |
 | Search | `POST /v1/search` | SearXNG results, with each page read through the reader |
 | Segmenter | `POST /v1/segment` | All six chunking strategies, their parameters, and whether the chunks still partition the input |
-| Embeddings | `POST /v1/embeddings` | Vectors, a cosine-similarity matrix, and the chunk-and-embed pipeline — including reading a URL first |
+| Embeddings | `POST /v1/embeddings` | Each vector drawn as signed bars, plus a cosine-similarity matrix over them |
+| Vectors | `POST /v1/vectors/*` | Embed → create a collection → upsert → search, with every step visible |
 | Reranker | `POST /v1/rerank` | Documents scored against a query and reordered |
 | Status | `GET /v1/status` | Which services are actually up, and what to run for the ones that are not |
 
@@ -27,6 +28,12 @@ POST path that converts HTML you already have instead of fetching a page.
 The Reader panel is the one worth opening first. Turning on **Download images** shows the
 `imageAssets` report with each image tagged `browser`, `fetch` or `inline` — `browser`
 meaning the bytes came from the render itself and cost no extra bandwidth.
+
+The Vectors panel is the one that shows how the pieces fit. It does not call a
+chunk-and-embed-and-store endpoint, because there isn't one — it embeds, creates a
+collection sized to whatever dimension the model returned, upserts, and then embeds the
+question separately with `retrieval.query`. That is the pipeline you would write, run in
+front of you.
 
 Panels whose service is not running report that rather than erroring: with the `ai`
 profile down, Embeddings and Reranker say so and tell you the command to start them.
