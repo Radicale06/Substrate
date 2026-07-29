@@ -63,8 +63,14 @@ export class ImageStore implements OnModuleInit {
             this.logger.log(`Images go to the Supabase bucket "${env.supabase.imageBucket}"`);
             // Warm the bucket off the request path.
             void this.ensureBucket();
-        } else {
+        } else if (this.mode.allowLocalFallback) {
             this.logger.log('Images go to the local volume');
+        } else {
+            this.logger.warn(
+                'Image downloading is effectively off: object storage is unavailable and '
+                + 'IMAGE_STORAGE=supabase forbids the local volume. Images will keep their '
+                + 'original URLs.',
+            );
         }
     }
 
@@ -77,14 +83,20 @@ export class ImageStore implements OnModuleInit {
             if (uploaded) {
                 return uploaded;
             }
-            if (!this.mode.allowLocalFallback) {
-                // IMAGE_STORAGE=supabase. Writing to a volume the backend may not mount
-                // would produce a link that 404s; returning null leaves the original
-                // remote URL in the markdown, which at least resolves.
-                this.logger.warn('Image upload failed and local fallback is disabled');
-                return null;
-            }
-            this.logger.warn('Falling back to local image storage');
+            this.logger.warn('Image upload to object storage failed');
+        }
+
+        /**
+         * Checked outside the branch above, which is the whole point of it.
+         *
+         * IMAGE_STORAGE=supabase with credentials missing resolves to neither Supabase nor
+         * a permitted fallback — and that path skipped this check entirely, so the one
+         * configuration that exists to forbid local writes was the one that performed them
+         * silently. Returning null leaves the original remote URL in the markdown, which
+         * resolves, instead of a local link the backend may not be serving.
+         */
+        if (!this.mode.allowLocalFallback) {
+            return null;
         }
 
         return this.saveLocally(objectName, bytes);
