@@ -18,6 +18,7 @@ reranking APIs, running entirely on your own machine.
 | Segmenter | `POST /v1/segment` | ✅ |
 | Embeddings | `POST /v1/embeddings` | ✅ |
 | Reranker | `POST /v1/rerank` | ✅ |
+| Vector store | `POST /v1/vectors/*` | ✅ |
 | Classifier | `/v1/classify` | planned |
 | DeepSearch | `/v1/chat/completions` | planned |
 
@@ -30,8 +31,9 @@ reranking APIs, running entirely on your own machine.
   one crawl, not the API
 - 📝 Markdown, HTML, plain text, or PNG screenshots
 - 🖼️ Screenshots saved to a local volume and served back over HTTP
-- 📥 Optional image downloading — mirrors a page's images locally, reusing the bytes the
-  browser already fetched
+- 📥 Optional image downloading — mirrors a page's images to Supabase Storage or a local
+  volume, reusing the bytes the browser already fetched
+- 🧮 A pgvector store, so the vectors you produce have somewhere to live
 - 🧠 Readability extraction, so you get the article instead of the navigation
 - 📄 PDF text extraction, fetched directly instead of through the browser
 - 🧾 JSON responses via `Accept: application/json`
@@ -64,6 +66,7 @@ cd frontend         && docker compose up --build
 cd backend          && docker compose up --build
 cd services/reader  && docker compose up --build
 cd services/segmenter && docker compose up --build
+cd services/vectors   && docker compose up --build
 cd services/searxng && docker compose up
 ```
 
@@ -185,7 +188,22 @@ than its Content-Type or extension. SVG is refused by that check — it has no m
 and these files are served from the API's own origin, so a stored SVG would be stored XSS.
 Refused images are reported as `skipped / unsupported-type` and keep their original URL.
 
-Stored images are pruned after 24 hours, and capped by both file count and total bytes.
+Images go to **Supabase Storage** when it is configured, and to the reader's local volume
+otherwise. `IMAGE_STORAGE` makes that choice explicit instead of inferred — `supabase`,
+`local`, or `auto` (the default, which uses Storage if the credentials are there). In
+`supabase` mode a failed upload leaves the original remote URL in the markdown rather than
+quietly writing to a volume nothing may be serving.
+
+Objects are content-addressed and sharded two levels deep, uploaded with `upsert` — a name
+collision *is* the same bytes — and a one-year `Cache-Control`. The three `SUPABASE_*`
+variables are a set, not three options: Storage builds links from `SUPABASE_URL`, which
+inside Compose is an internal hostname, so without `SUPABASE_PUBLIC_URL` every stored link
+would come back already broken. The service refuses to enable Storage rather than hand
+those out.
+
+Locally stored images are pruned after 24 hours, and capped by both file count and total
+bytes. Objects in Storage are not pruned — they are content-addressed and cheap, and the
+bucket is yours to set a lifecycle policy on.
 
 | Limit | Default | Override |
 |---|---|---|
@@ -211,6 +229,7 @@ All configuration is environment variables, and every service ships an annotated
 | Backend | [backend/.env.example](backend/.env.example) |
 | Reader | [services/reader/.env.example](services/reader/.env.example) |
 | Segmenter | [services/segmenter/.env.example](services/segmenter/.env.example) |
+| Vector store | [services/vectors/.env.example](services/vectors/.env.example) |
 | Embeddings | [services/embeddings/.env.example](services/embeddings/.env.example) |
 | Reranker | [services/reranker/.env.example](services/reranker/.env.example) |
 | SearXNG | [services/searxng/.env.example](services/searxng/.env.example) |
@@ -228,8 +247,10 @@ standalone.
 | `READER_URL` | *(unset)* | Enables `GET /<url>` and search's page reading |
 | `READER_API_KEY` | *(unset)* | Shared secret for the reader service |
 | `CORS_ORIGINS` | *(unset)* | Browser origins allowed to call the API; empty disables CORS |
-| `SEGMENTER_URL` | *(unset)* | Enables `/v1/segment` and chunking in `/v1/embeddings` |
+| `SEGMENTER_URL` | *(unset)* | Enables `/v1/segment` |
 | `SEGMENTER_API_KEY` | *(unset)* | Shared secret for the segmenter service |
+| `VECTORS_URL` | *(unset)* | Enables `/v1/vectors/*` |
+| `VECTORS_API_KEY` | *(unset)* | Shared secret for the vector service |
 | `SEARXNG_URL` | *(unset)* | Enables `/v1/search` |
 | `EMBEDDINGS_URL` | *(unset)* | Enables `/v1/embeddings` |
 | `RERANKER_URL` | *(unset)* | Enables `/v1/rerank` |
@@ -330,54 +351,63 @@ docker compose --profile ai up --build      # downloads the models on first star
 ### `POST /v1/embeddings`
 
 ```bash
-curl -X POST 'http://127.0.0.1:3000/v1/embeddings'   -H 'Content-Type: application/json'   -d '{"input":["hello world"],"task":"retrieval.query","dimensions":256}'
+curl -X POST 'http://127.0.0.1:3000/v1/embeddings'   -H 'Content-Type: application/json'   -d '{"input":["hello world"],"task":"retrieval.query"}'
 ```
 
 | Field | Default | Meaning |
 |---|---|---|
 | `input` | *(required)* | A string, or a list of strings |
-| `url` | — | Read this page and embed its text instead of `input` |
 | `task` | `retrieval.passage` | `retrieval.query` applies the instruction prefix |
-| `dimensions` | *(model default)* | Truncate the vector, then re-normalize |
-| `chunking` | — | Split each input first and return a vector per chunk |
+| `dimensions` | *(model default)* | Truncate the vector, then re-normalize — Matryoshka models only |
+| `instruction` | *(configured)* | Overrides the default instruction for queries |
 
-### The whole pipeline in one call
+The response is exactly what the model service returned, in OpenAI's shape, so any
+OpenAI-compatible client works against it unchanged.
 
-`chunking` takes the same fields as `/v1/segment`. Add a `url` and the API reads the page
-too, so one request turns a web page into a set of vectors:
+### Composing the pipeline
+
+Embeddings does not chunk, and does not fetch. Splitting a document is the segmenter's job
+and storing vectors is the vector store's, so indexing a page is a few calls you make in
+order:
 
 ```bash
-curl -X POST 'http://127.0.0.1:3000/v1/embeddings' \
+# 1. read the page
+curl 'http://127.0.0.1:3000/https://en.wikipedia.org/wiki/Vector_database'
+
+# 2. split it
+curl -X POST 'http://127.0.0.1:3000/v1/segment' -H 'Content-Type: application/json' \
+  -d '{"content":"…","strategy":"markdown","max_chunk_length":300,"return_chunks":true}'
+
+# 3. embed the chunks
+curl -X POST 'http://127.0.0.1:3000/v1/embeddings' -H 'Content-Type: application/json' \
+  -d '{"input":["…chunk one…","…chunk two…"],"task":"retrieval.passage"}'
+
+# 4. store them
+curl -X POST 'http://127.0.0.1:3000/v1/vectors/collections/docs_1024/upsert' \
   -H 'Content-Type: application/json' \
-  -d '{"url":"https://en.wikipedia.org/wiki/Vector_database",
-       "chunking":{"strategy":"markdown","max_chunk_length":300}}'
+  -d '{"records":[{"id":"doc-0","vector":[…],"metadata":{"text":"…chunk one…"}}]}'
 ```
 
-The response keeps its OpenAI shape and adds what you need to store the vectors against
-the right text — `chunks[]` with character offsets and token counts, and a `chunk_index`
-on every embedding:
+That is deliberately not one endpoint. Folding chunking into embeddings meant a second,
+worse implementation of the segmenter to keep in step with the real one — and it hid the
+step you most need to see, because the chunk *text* is what you store beside the vector.
+Keeping them apart is also what lets you replace any single stage with something this
+project does not ship.
 
-```jsonc
-{
-  "model": "Qwen/Qwen3-Embedding-0.6B",
-  "data":  [{ "index": 0, "embedding": [...], "chunk_index": 0, "source_index": 0 }],
-  "chunks": [{ "index": 0, "source_index": 0, "text": "…", "start": 0, "end": 361, "tokens": 67 }],
-  "usage": { "total_tokens": 23344 }
-}
-```
-
-Without `chunking` the endpoint is a plain proxy and the response is exactly what the model
-service returned, so existing OpenAI-shaped clients are unaffected.
-
-Embedding is batched internally, because the model service processes a whole request before
-answering and a page's worth of chunks in one call would run past any sane timeout. It is
-still slow on CPU — the 81-chunk example above takes around two minutes — so use a GPU
-(`EMBEDDINGS_DEVICE=cuda`) if you intend to index at any volume.
+Embedding is slow on CPU — a page's worth of chunks takes minutes — so batch the chunks
+yourself in sizes that fit your timeout, and use a GPU (`EMBEDDINGS_DEVICE=cuda`) if you
+intend to index at any volume.
 
 The `task` distinction is not cosmetic: instruction-tuned embedding models expect the
 prefix on **queries only**, and applying it to documents quietly costs retrieval quality.
-Truncated vectors are re-normalized, so cosine similarity stays correct — store the
-dimension you chose, since vectors of different lengths are not comparable.
+
+`dimensions` is only accepted when the model was trained for truncation. Slicing any
+embedding "works" arithmetically and re-normalizing keeps it unit length, so a model
+without Matryoshka training would answer with a perfectly plausible short vector whose
+retrieval quality has quietly collapsed — a failure nothing downstream can detect. That is
+refused instead, and `EMBEDDINGS_SUPPORTS_MRL` is how a model declares otherwise. When it
+is accepted, the truncated vector is re-normalized so cosine similarity stays correct;
+store the dimension you chose, since vectors of different lengths are not comparable.
 
 ### `POST /v1/rerank`
 
@@ -392,21 +422,77 @@ request's `documents` array.
 
 ### Models
 
-| | Default | License |
-|---|---|---|
-| Embeddings | `Qwen/Qwen3-Embedding-0.6B` | Apache-2.0 |
-| Reranker | `Qwen/Qwen3-Reranker-0.6B` | Apache-2.0 |
+| | Default | License | Dims |
+|---|---|---|---|
+| Embeddings | `microsoft/harrier-oss-v1-0.6b` | MIT | 1024 |
+| Reranker | `Qwen/Qwen3-Reranker-0.6B` | Apache-2.0 | — |
 
 Both are swappable via `EMBEDDINGS_MODEL_ID` / `RERANKER_MODEL_ID`. The reranker supports
 two architectures through `RERANKER_MODEL_KIND`: `causal` (Qwen3-style yes/no scoring) and
 `cross-encoder` (BGE-style classifiers).
 
-Jina's own `jina-embeddings-v3` and the v5 family are CC-BY-NC, so they are deliberately
-not defaults here — an open-source project should not ship non-commercial weights.
+The embedding default is a near drop-in for the Qwen3 embedder it replaced — same family
+of backbone, same 1024 dimensions, same instruction-prefix convention — under a more
+permissive license. It costs exactly one thing: it does not document Matryoshka, so
+`dimensions` is refused unless you say otherwise. Going back is one pair of variables:
+
+```bash
+EMBEDDINGS_MODEL_ID=Qwen/Qwen3-Embedding-0.6B
+EMBEDDINGS_SUPPORTS_MRL=true
+```
+
+The reranker default is unchanged, and that is a decision rather than neglect. Several
+rerankers now score better and every one of them is disqualified here: `jina-reranker-v3`
+and `ctxl-rerank-v2` are non-commercial despite being described as open, and the
+permissively licensed ones need `trust_remote_code` and a third scoring path in the
+service. Set `RERANKER_MODEL_ID` if that trade is yours to make differently.
+
+Jina's own `jina-embeddings-v3` and the v5 family are CC-BY-NC — despite being widely
+described otherwise — so they are deliberately not defaults here. An open-source project
+should not ship non-commercial weights.
 
 With neither service running, both endpoints return 503 explaining how to enable them;
 nothing else is affected. Implementation lives in
 [services/embeddings/](services/embeddings/) and [services/reranker/](services/reranker/).
+
+## 🧮 Vector store
+
+`/v1/vectors/*` keeps vectors in Postgres through
+[pgvector](https://github.com/pgvector/pgvector) and answers nearest-neighbour queries —
+the last stage of the pipeline above, so what you embed has somewhere to go.
+
+It is built on Supabase's [`vecs`](https://github.com/supabase/vecs), which is a client
+for pgvector, **not** a dependency on the Supabase platform: any Postgres with the
+extension available works, including the one already holding the crawl cache.
+
+```bash
+curl -X POST 'http://127.0.0.1:3000/v1/vectors/collections' \
+  -H 'Content-Type: application/json' -d '{"name":"docs_1024","dimension":1024}'
+
+curl -X POST 'http://127.0.0.1:3000/v1/vectors/collections/docs_1024/upsert' \
+  -H 'Content-Type: application/json' \
+  -d '{"records":[{"id":"doc-0","vector":[…],"metadata":{"url":"https://…"}}]}'
+
+curl -X POST 'http://127.0.0.1:3000/v1/vectors/collections/docs_1024/query' \
+  -H 'Content-Type: application/json' -d '{"vector":[…],"limit":5}'
+```
+
+A query returns both the raw `distance` and the `similarity` (`1 - distance`), so neither
+side has to remember which way round cosine distance runs. Metadata comes back with each
+match and can be filtered on, which is how you store the chunk text next to its vector.
+
+It never embeds anything — you bring the vectors — and that is what keeps it usable with
+any model, including one this project does not ship. Three behaviours are worth knowing
+before you build on it: a collection's width is **fixed at creation**, so changing model
+means a new collection rather than a migration (hence naming them `docs_1024`); building
+an index **blocks writes**, so it is a separate endpoint you call when you choose to; and
+pgvector cannot index past **2000 dimensions**, so wider collections are refused up front
+instead of silently scanning every row later.
+
+It needs a direct (non-pooled) database URL, because it issues DDL, and its tables live
+in a `vecs` schema of their own so they never collide with the backend's Prisma-managed
+ones. With nothing configured it answers 503, like every other optional dependency here.
+See [services/vectors/README.md](services/vectors/README.md).
 
 ## 🗄️ Optional database
 
@@ -431,7 +517,7 @@ cd backend
 npx prisma migrate dev --name your_change   # creates a migration and applies it
 ```
 
-**Any** Postgres works — nothing here is Supabase-specific except the optional screenshot
+**Any** Postgres works — nothing here is Supabase-specific except the optional object
 storage below. If you want Postgres plus a dashboard, the self-hosted
 [Supabase](https://supabase.com/docs/guides/self-hosting) stack drops into
 `services/supabase/`. It is not committed to this repository, because it is a large
@@ -445,15 +531,19 @@ cd services/supabase && cp .env.example .env && docker compose up -d
 
 It has its own lifecycle, so start it separately and then point `DATABASE_URL` at it.
 
-Supabase Storage can also hold screenshots instead of the local volume — set
-`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` and `SUPABASE_PUBLIC_URL` **on the reader
-service**, which is what writes them. That is independent of the database setting above.
+Supabase Storage can also hold screenshots and downloaded images instead of the local
+volume — set `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` and `SUPABASE_PUBLIC_URL` **on
+the reader service**, which is what writes them. That is independent of the database
+setting above, and of the vector store, which needs only pgvector.
+
+The service-role key bypasses row-level security, so it belongs to the reader service and
+nothing else — never to the console, and never to a browser.
 
 ## 🛠️ Local development
 
 Four Node apps — the backend and two [NestJS](https://nestjs.com/) services, plus the
 console — all requiring Node.js 22+. Each is independent: same scripts, separate
-`node_modules`. The two Python services under `services/` are built by Docker only.
+`node_modules`. The Python services under `services/` are built by Docker only.
 
 ```bash
 cd backend            # or services/reader, services/segmenter, frontend
@@ -507,6 +597,7 @@ A monorepo. `backend/` is the API everything is called through; each thing it de
 │       ├── search/           GET|POST /v1/search
 │       ├── segment/          POST /v1/segment — client for the segmenter service
 │       ├── inference/        POST /v1/embeddings, /v1/rerank
+│       ├── vectors/          POST /v1/vectors/* — client for the vector service
 │       └── cache/            Postgres-backed crawl cache
 └── services/
     ├── reader/               headless Chrome behind POST /crawl
@@ -514,9 +605,10 @@ A monorepo. `backend/` is the API everything is called through; each thing it de
     │       ├── crawl/        the endpoint and its request/result contract
     │       ├── crawler/      crawl orchestration
     │       ├── rendering/    browser, DOM, PDF and output formatting
-    │       ├── storage/      screenshot persistence
+    │       ├── storage/      screenshot and image persistence (Supabase or local)
     │       └── security/     SSRF guard
     ├── segmenter/            token counting and chunking strategies
+    ├── vectors/              pgvector storage and search, via Supabase's vecs
     ├── searxng/              search backend
     ├── embeddings/           FastAPI + sentence-transformers (profile: ai)
     ├── reranker/             FastAPI + transformers (profile: ai)
@@ -530,6 +622,7 @@ Each part documents itself, and those are the files to read before changing one:
 | [frontend/README.md](frontend/README.md) | The console, and why the API is proxied rather than called directly |
 | [services/reader/README.md](services/reader/README.md) | The browser, the two timeouts, and image downloading |
 | [services/segmenter/README.md](services/segmenter/README.md) | The six chunking strategies and what each is for |
+| [services/vectors/README.md](services/vectors/README.md) | The vector store, and what to know before you build on it |
 | [services/embeddings/README.md](services/embeddings/README.md) | The embedding model, and the query/document asymmetry |
 | [services/reranker/README.md](services/reranker/README.md) | The two scoring architectures, and how to avoid picking the wrong one |
 

@@ -43,7 +43,8 @@ carry their own licenses:
 
   * SearXNG          (https://github.com/searxng/searxng)        AGPL-3.0
   * Supabase         (https://github.com/supabase/supabase)      Apache-2.0
-  * Qwen3-Embedding  (https://huggingface.co/Qwen)               Apache-2.0
+  * pgvector         (https://github.com/pgvector/pgvector)      PostgreSQL
+  * Harrier-OSS      (https://huggingface.co/microsoft)          MIT
   * Qwen3-Reranker   (https://huggingface.co/Qwen)               Apache-2.0
 
 The model weights are downloaded at runtime and are not part of this
