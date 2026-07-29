@@ -20,6 +20,11 @@ services/reader/screenshots/
 # Downloaded model weights
 services/*/models/
 
+# The self-hosted Supabase stack, cloned in rather than vendored. It is a large
+# independent project with its own release cycle, so committing a snapshot of it would
+# mean maintaining a fork nobody asked for. See the README for the two lines that fetch it.
+services/supabase/
+
 # Tooling caches
 .impeccable/
 __pycache__/
