@@ -123,13 +123,16 @@ async def create_collection(request: CreateCollectionRequest) -> CollectionInfo:
         )
 
     try:
-        store.collection(request.name, dimension=request.dimension)
+        # Reported from the collection, never echoed back from the request: the two differ
+        # exactly when the caller is wrong about an existing collection, which is the case
+        # worth being told about rather than confirmed in.
+        collection = store.collection(request.name, dimension=request.dimension)
         if request.index:
             store.create_index(request.name, replace=False)
     except Exception as err:  # noqa: BLE001
         raise _guard(err) from err
 
-    return CollectionInfo(name=request.name, dimension=request.dimension)
+    return CollectionInfo(name=collection.name, dimension=collection.dimension)
 
 
 @app.delete("/v1/collections/{name}", status_code=status.HTTP_204_NO_CONTENT,

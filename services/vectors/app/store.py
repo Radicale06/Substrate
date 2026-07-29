@@ -92,6 +92,25 @@ class VectorStore:
 
         return name
 
+    @staticmethod
+    def _checked(collection, dimension: int | None):
+        """
+        Re-applies the width check the cache would otherwise skip.
+
+        vecs raises MismatchedDimension from get_or_create_collection, but a cache hit
+        never calls it -- so without this, asking for a width the collection does not
+        have returned the existing handle and reported success. The caller then upserted
+        vectors of the wrong width and found out from a database error several calls later.
+        """
+        if dimension is not None and collection.dimension != dimension:
+            raise DimensionMismatch(
+                f"Collection {collection.name} has {collection.dimension} dimensions, "
+                f"not {dimension}. A collection's width is fixed when it is created, so "
+                "use a different name for vectors of a different width."
+            )
+
+        return collection
+
     def collection(self, name: str, dimension: int | None = None):
         """
         Returns a collection handle, creating it when a dimension is supplied.
@@ -104,12 +123,12 @@ class VectorStore:
 
         cached = self._collections.get(name)
         if cached is not None:
-            return cached
+            return self._checked(cached, dimension)
 
         with self._lock:
             cached = self._collections.get(name)
             if cached is not None:
-                return cached
+                return self._checked(cached, dimension)
 
             try:
                 if dimension is None:
@@ -136,8 +155,27 @@ class VectorStore:
         client.delete_collection(self._valid(name))
         self._collections.pop(name, None)
 
+    def _require_width(self, collection, width: int, what: str) -> None:
+        """
+        Checks a vector's width against the collection before Postgres does.
+
+        Not cosmetic. pgvector rejects the wrong width with a driver error that names the
+        table and not the caller's mistake, which arrived as a 500 -- so the one failure a
+        caller is most likely to hit while switching embedding model was the one failure
+        that looked like the service was broken.
+        """
+        if width != collection.dimension:
+            raise DimensionMismatch(
+                f"Collection {collection.name} holds {collection.dimension}-dimension "
+                f"vectors; the {what} has {width}. A collection's width is fixed when it "
+                "is created, so this needs a different collection, not a retry."
+            )
+
     def upsert(self, name: str, records: list[tuple[str, list[float], dict]]) -> int:
+        # dimension=None on purpose: an upsert must not create the collection it writes
+        # to, so a missing one stays a 404 rather than becoming a silent create.
         collection = self.collection(name)
+        self._require_width(collection, len(records[0][1]), "batch")
         collection.upsert(records=records)
 
         return len(records)
@@ -151,6 +189,7 @@ class VectorStore:
         ef_search: int | None,
     ) -> list[dict[str, Any]]:
         collection = self.collection(name)
+        self._require_width(collection, len(vector), "query vector")
 
         rows = collection.query(
             data=vector,
@@ -200,13 +239,29 @@ class VectorStore:
         writes for as long as the build takes. On an empty collection that is instant; on
         a populated one it is an outage, and the caller should choose when to pay it.
 
+        `replace=False` means "make sure it is indexed", not "fail if it already is".
+        vecs raises ArgError in that case, which turned a re-run of an idempotent create
+        into a 500 -- and creating a collection that already exists is otherwise a
+        perfectly good no-op.
         """
         collection = self.collection(name)
-        collection.create_index(
-            method=IndexMethod.hnsw,
-            measure=MEASURE,
-            index_arguments=IndexArgsHNSW(m=16, ef_construction=64),
-            replace=replace,
-        )
+        if not replace and collection.index is not None:
+            return
+
+        try:
+            collection.create_index(
+                method=IndexMethod.hnsw,
+                measure=MEASURE,
+                index_arguments=IndexArgsHNSW(m=16, ef_construction=64),
+                replace=replace,
+            )
+        except vecs.exc.ArgError:
+            # Two callers can pass the check above concurrently, and the loser gets the
+            # same "an index exists" error. Confirming the index is there is the check
+            # that matters; anything else ArgError covers (a measure or method vecs
+            # rejects) leaves it absent, so re-raise on that.
+            if replace or collection.index is None:
+                raise
+
 
 store = VectorStore()
