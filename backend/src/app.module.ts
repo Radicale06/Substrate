@@ -8,6 +8,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { ReaderModule } from './reader/reader.module';
 import { SearchModule } from './search/search.module';
 import { SegmentModule } from './segment/segment.module';
+import { VectorsModule } from './vectors/vectors.module';
 
 /**
  * Import order is load-bearing.
@@ -28,6 +29,7 @@ import { SegmentModule } from './segment/segment.module';
         SegmentModule,
         SearchModule,
         InferenceModule,
+        VectorsModule,
         V1FallbackModule, // unknown /v1 paths -> 404, before the catch-all
         ReaderModule, // catch-all: must stay last
     ],

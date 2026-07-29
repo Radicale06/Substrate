@@ -42,6 +42,12 @@ const PROBES: Array<{
         hint: 'Start it with `docker compose up segmenter`, or set SEGMENTER_URL.',
     },
     {
+        name: 'vectors', endpoint: 'POST /v1/vectors/*', path: '/health',
+        url: () => env.vectorsUrl,
+        hint: 'Start it with `docker compose up vectors`, or set VECTORS_URL. It also needs '
+            + 'a Postgres with pgvector.',
+    },
+    {
         name: 'embeddings', endpoint: 'POST /v1/embeddings', path: '/health',
         url: () => env.embeddingsUrl,
         hint: 'Start it with `docker compose --profile ai up`, or set EMBEDDINGS_URL.',

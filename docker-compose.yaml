@@ -19,6 +19,7 @@ include:
   - backend/docker-compose.yaml
   - services/reader/docker-compose.yaml
   - services/segmenter/docker-compose.yaml
+  - services/vectors/docker-compose.yaml
   - services/searxng/docker-compose.yaml
   - services/embeddings/docker-compose.yaml
   - services/reranker/docker-compose.yaml

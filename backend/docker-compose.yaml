@@ -31,6 +31,8 @@ services:
       READER_API_KEY: "${READER_API_KEY:-}"
       SEGMENTER_URL: "${SEGMENTER_URL:-http://segmenter:3002}"
       SEGMENTER_API_KEY: "${SEGMENTER_API_KEY:-}"
+      VECTORS_URL: "${VECTORS_URL:-http://vectors:8000}"
+      VECTORS_API_KEY: "${VECTORS_API_KEY:-}"
       SEARXNG_URL: "${SEARXNG_URL:-http://searxng:8080}"
       # Model services; only reachable when started with --profile ai.
       EMBEDDINGS_URL: "${EMBEDDINGS_URL:-http://embeddings:8000}"

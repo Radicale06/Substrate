@@ -70,6 +70,14 @@ export const STATUS_PROBE_TIMEOUT_MS = 3_000;
  */
 export const STATUS_CACHE_MS = 5_000;
 
+// --- Vector store ---
+
+/**
+ * Budget for one vector-store call. Generous because building an HNSW index is not a
+ * quick operation on a populated collection, and it runs synchronously.
+ */
+export const VECTORS_TIMEOUT_MS = 120_000;
+
 // --- Segmenter service ---
 
 /**

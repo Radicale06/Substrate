@@ -46,6 +46,13 @@ export const env = {
     segmenterApiKey: process.env.SEGMENTER_API_KEY || undefined,
 
     /**
+     * The vector store, which owns pgvector collections. Needed by /v1/vectors/*.
+     */
+    vectorsUrl: process.env.VECTORS_URL?.replace(/\/$/, '') || undefined,
+    /** Shared secret for the vector store, when it requires one. */
+    vectorsApiKey: process.env.VECTORS_API_KEY || undefined,
+
+    /**
      * Web search. Points at a self-hosted SearXNG instance; when unset the /v1/search
      * endpoint reports that it is not configured rather than failing obscurely.
      */
