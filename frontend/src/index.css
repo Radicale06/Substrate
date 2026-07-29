@@ -205,9 +205,9 @@ pre.output {
     padding: 0 2px; border: 1px solid var(--border); border-radius: 6px;
     background: var(--surface-2); overflow: hidden;
 }
-.vector-plot > i { flex: 1 1 0; min-width: 1px; border-radius: 1px; }
-.vector-plot > i.up { align-self: flex-start; background: var(--accent); margin-top: 50%; transform: translateY(-100%); }
-.vector-plot > i.down { align-self: flex-start; background: var(--warn); margin-top: 50%; }
+.vector-plot > i { flex: 1 1 0; min-width: 1px; border-radius: 1px; align-self: center; }
+.vector-plot > i.up { background: var(--accent); transform: translateY(-50%); }
+.vector-plot > i.down { background: var(--warn); transform: translateY(50%); }
 .vector-meta { margin: 5px 0 0; font-family: var(--mono); font-size: 11px; color: var(--text-dim); }
 
 .matrix { border-collapse: collapse; width: 100%; font-size: 13px; }
