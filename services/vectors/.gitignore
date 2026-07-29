@@ -1,0 +1,6 @@
+__pycache__/
+*.py[cod]
+.impeccable/
+
+# Local config; .env.example is the tracked template
+.env

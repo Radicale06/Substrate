@@ -1,0 +1,34 @@
+# The vector store on its own.
+#
+#   docker compose up --build          (from services/vectors/)
+#   docker compose up --build          (from the repo root, which includes this file)
+#
+# Needs a Postgres with the pgvector extension available. It creates its own `vecs`
+# schema there, so it coexists with the backend's Prisma-managed tables in the same
+# database without either touching the other's objects.
+#
+# With no database configured the service still starts, reports `unconfigured` on
+# /health, and answers 503 -- the same pattern every other optional dependency uses.
+
+services:
+  vectors:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: substrate-vectors
+    restart: unless-stopped
+    # ports:
+    #   - "${VECTORS_PORT:-8100}:8000"
+    environment:
+      # DIRECT_URL first: vecs issues DDL, which a transaction pooler will not run.
+      VECTORS_DATABASE_URL: "${VECTORS_DATABASE_URL:-${DIRECT_URL:-${DATABASE_URL:-}}}"
+      VECTORS_API_KEY: "${VECTORS_API_KEY:-}"
+      VECTORS_MAX_BATCH: "${VECTORS_MAX_BATCH:-}"
+      VECTORS_MAX_LIMIT: "${VECTORS_MAX_LIMIT:-}"
+      VECTORS_MAX_DIMENSION: "${VECTORS_MAX_DIMENSION:-}"
+    networks:
+      - substrate
+
+networks:
+  substrate:
+    name: substrate

@@ -1,0 +1,6 @@
+fastapi==0.121.2
+uvicorn[standard]==0.41.0
+pydantic==2.12.4
+vecs==0.4.5
+# vecs pins sqlalchemy "2.*"; keep a future 2.1 from arriving unannounced.
+sqlalchemy<2.1

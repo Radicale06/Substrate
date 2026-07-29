@@ -1,0 +1,15 @@
+__pycache__
+*.py[cod]
+.impeccable
+
+.git
+.gitignore
+.vscode
+*.log
+
+README.md
+docker-compose.yaml
+Dockerfile
+.dockerignore
+.env
+.env.example
