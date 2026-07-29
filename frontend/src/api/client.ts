@@ -96,22 +96,10 @@ export interface SegmentResult {
     tokens?: string[];
 }
 
-/** One chunk in a chunk-and-embed response. */
-export interface EmbeddedChunk {
-    index: number;
-    source_index: number;
-    text: string;
-    start: number;
-    end: number;
-    tokens?: number;
-}
-
 export interface EmbeddingsResult {
     model: string;
-    data: Array<{ index: number; embedding: number[]; chunk_index?: number; source_index?: number; }>;
+    data: Array<{ index: number; embedding: number[]; }>;
     usage?: { total_tokens: number; };
-    /** Present only when the request asked for chunking. */
-    chunks?: EmbeddedChunk[];
 }
 
 export interface RerankResult {
@@ -277,28 +265,25 @@ export const api = {
     },
 
     /**
-     * Embeddings, optionally as a whole pipeline.
+     * Embeddings. Text in, vectors out — nothing else.
      *
-     * With `chunking` the API splits first and returns a vector per chunk; with `url` it
-     * reads the page too, so one call turns a web page into vectors.
+     * Splitting text belongs to /v1/segment, and storing the result to /v1/vectors; the
+     * caller composes them, which is what makes each one usable on its own.
      */
     async embed(options: {
-        input?: string[];
-        url?: string;
+        input: string[];
         task: string;
         dimensions?: number;
         instruction?: string;
-        chunking?: ChunkOptions;
     }): Promise<EmbeddingsResult> {
         const response = await fetch(`${BASE}/v1/embeddings`, {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify({
-                ...(options.url ? { url: options.url } : { input: options.input }),
+                input: options.input,
                 task: options.task,
                 ...(options.dimensions ? { dimensions: options.dimensions } : {}),
                 ...(options.instruction?.trim() ? { instruction: options.instruction.trim() } : {}),
-                ...(options.chunking ? { chunking: options.chunking } : {}),
             }),
         });
         if (!response.ok) {
