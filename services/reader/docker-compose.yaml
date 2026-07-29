@@ -28,6 +28,8 @@ services:
       READER_API_KEY: "${READER_API_KEY:-}"
       # Makes stored-image links absolute; see .env.example.
       PUBLIC_BASE_URL: "${PUBLIC_BASE_URL:-}"
+      # supabase | local | auto. See .env.example.
+      IMAGE_STORAGE: "${IMAGE_STORAGE:-auto}"
       # Bounds on image downloading; see .env.example.
       IMAGE_MAX_PER_CRAWL: "${IMAGE_MAX_PER_CRAWL:-}"
       IMAGE_TOTAL_BYTES_PER_CRAWL: "${IMAGE_TOTAL_BYTES_PER_CRAWL:-}"

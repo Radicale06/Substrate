@@ -57,7 +57,13 @@ export class ScreenshotStore {
             await this.ensureBucket();
             const { error } = await client.storage
                 .from(env.supabase.bucket)
-                .upload(fileName, content, { contentType: 'image/png', upsert: false });
+                .upload(fileName, content, {
+                    contentType: 'image/png',
+                    // Names are UUIDs, so a collision cannot happen; upsert costs nothing
+                    // and removes the only path where a duplicate would read as failure.
+                    upsert: true,
+                    cacheControl: '31536000',
+                });
             if (error) {
                 this.logger.warn('Failed to upload screenshot to Supabase', { err: error.message });
                 return null;

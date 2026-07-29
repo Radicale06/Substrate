@@ -94,7 +94,28 @@ service's own egress IP.
 
 Stored bytes are identified by magic number, never by Content-Type or extension, so the
 stored filename can only ever carry a whitelisted extension. SVG fails that check by
-construction, which is deliberate: the backend serves these files from its own origin.
+construction, which is deliberate: these files are served back from an origin of yours.
+
+### Where the bytes go
+
+Supabase Storage when it is configured, `STORAGE_DIR/instant-images` otherwise.
+`IMAGE_STORAGE` makes that a decision rather than an inference — `supabase`, `local`, or
+`auto` (the default). In `supabase` mode there is no local fallback: an upload that fails
+leaves the original remote URL in the markdown, because falling back would write to a
+volume the backend may not be serving, producing links that 404 rather than links that
+merely point elsewhere.
+
+Object names are a content hash, sharded two levels (`3f/a7/3fa7….jpg`), so the same image
+is stored once across every crawl. They are uploaded with `upsert` and a one-year
+`Cache-Control`: a name collision *is* the same bytes, so overwriting is a semantic no-op —
+and it removes the need to recognise an "already exists" error, whose shape is not stable
+across Storage versions and whose misclassification silently sent every repeat image to
+local disk.
+
+`SUPABASE_URL` and `SUPABASE_PUBLIC_URL` are a pair. Storage builds links from the URL it
+was constructed with, which inside Compose is an internal hostname no browser can resolve,
+so Storage is refused outright rather than enabled into handing out links that are broken
+before they are returned.
 
 ## Screenshots
 
@@ -118,8 +139,9 @@ Local files are pruned by age and count, so an unattended instance cannot fill i
 | `IMAGE_MAX_PER_CRAWL` | `150` | Images downloaded per crawl |
 | `IMAGE_TOTAL_BYTES_PER_CRAWL` | `64MB` | Byte budget per crawl |
 | `IMAGE_DOWNLOAD_BUDGET_MS` | `45000` | Whole-batch deadline |
+| `IMAGE_STORAGE` | `auto` | `supabase`, `local`, or `auto` (Storage if credentials exist) |
 | `SUPABASE_IMAGE_BUCKET` | `substrate-images` | Bucket for downloaded images |
-| `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_PUBLIC_URL` | *(unset)* | Send screenshots to Storage |
+| `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_PUBLIC_URL` | *(unset)* | Send screenshots and images to Storage |
 
 `CHROME_ARGS` defaults to `--no-sandbox --disable-setuid-sandbox --disable-dev-shm-usage
 --single-process`, which suits a small Linux container. **`--single-process` crashes

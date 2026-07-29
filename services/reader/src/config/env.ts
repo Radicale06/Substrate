@@ -97,11 +97,64 @@ export const env = {
         /** Separate bucket for downloaded page images; they have their own lifecycle. */
         imageBucket: process.env.SUPABASE_IMAGE_BUCKET || 'substrate-images',
     },
+
+    /**
+     * Where downloaded images go.
+     *
+     *   supabase  Object storage only. A failed upload leaves the original remote URL
+     *             in the markdown rather than writing to a volume the backend may not
+     *             mount -- the honest degradation.
+     *   local     The shared volume only, ignoring any Supabase credentials.
+     *   auto      Supabase when it is configured, otherwise local. (default)
+     *
+     * Explicit rather than inferred from whether credentials happen to be set: those
+     * two intents are different, and guessing produced silent local writes when an
+     * operator believed everything was going to object storage.
+     */
+    imageStorage: (process.env.IMAGE_STORAGE || 'auto').trim().toLowerCase(),
 };
 
 /** Whether Supabase Storage is available for screenshots. */
 export function isSupabaseConfigured(): boolean {
     return Boolean(env.supabase.url && env.supabase.serviceRoleKey);
+}
+
+/**
+ * Whether images should go to object storage, and whether a local write may follow.
+ *
+ * The public-URL check is not pedantry. Storage builds links from SUPABASE_URL, which
+ * inside compose is an internal address like http://kong:8000 -- reachable by this
+ * container and by nobody else. Without SUPABASE_PUBLIC_URL every stored image link
+ * would be returned to callers already broken, which is worse than not storing at all.
+ */
+export function imageStorageMode(): { useSupabase: boolean; allowLocalFallback: boolean; problem?: string; } {
+    const mode = env.imageStorage;
+
+    if (mode === 'local') {
+        return { useSupabase: false, allowLocalFallback: true };
+    }
+    if (!isSupabaseConfigured()) {
+        return mode === 'supabase'
+            ? {
+                useSupabase: false,
+                allowLocalFallback: false,
+                problem: 'IMAGE_STORAGE=supabase needs SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.',
+            }
+            : { useSupabase: false, allowLocalFallback: true };
+    }
+
+    const internal = !/^https?:\/\/(localhost|127\.0\.0\.1)([:/]|$)/i.test(env.supabase.url!);
+    if (internal && !env.supabase.publicUrl) {
+        return {
+            useSupabase: false,
+            allowLocalFallback: mode !== 'supabase',
+            problem: `SUPABASE_URL (${env.supabase.url}) is not reachable from a browser and `
+                + 'SUPABASE_PUBLIC_URL is unset, so stored image links would be dead. '
+                + 'Set SUPABASE_PUBLIC_URL to the address clients can reach.',
+        };
+    }
+
+    return { useSupabase: true, allowLocalFallback: mode === 'auto' };
 }
 
 /**
