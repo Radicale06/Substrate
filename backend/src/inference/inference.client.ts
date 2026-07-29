@@ -1,7 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { INFERENCE_TIMEOUT_MS } from '../config/constants';
 import { env } from '../config/env';
-import { ServiceCrashedError, UpstreamFailureError } from '../common/errors';
+import {
+    BadRequestError,
+    isDomainError,
+    ServiceCrashedError,
+    UpstreamFailureError,
+} from '../common/errors';
 
 /**
  * Thin HTTP client for the model services.
@@ -44,15 +49,12 @@ export class InferenceClient {
             });
 
             if (!response.ok) {
-                // The model services report their own validation problems; pass the
-                // detail through so a caller can act on it.
-                const detail = await this.readError(response);
-                throw new UpstreamFailureError(`Model service returned ${response.status}: ${detail}`);
+                throw this.toDomainError(service, response.status, await this.readError(response));
             }
 
             return await response.json() as T;
         } catch (err: any) {
-            if (err instanceof UpstreamFailureError) {
+            if (isDomainError(err)) {
                 throw err;
             }
             if (err?.name === 'AbortError') {
@@ -68,6 +70,35 @@ export class InferenceClient {
             );
         } finally {
             clearTimeout(timer);
+        }
+    }
+
+    /**
+     * The model services' status codes carry meaning, so they are translated rather than
+     * flattened.
+     *
+     * Every non-2xx used to become a 502, which said "the upstream failed" about requests
+     * the upstream had understood perfectly and correctly refused — `dimensions` against a
+     * model without Matryoshka being the one a caller is most likely to hit. A 502 invites
+     * a retry; a 400 tells them what to change.
+     */
+    private toDomainError(service: string, status: number, message: string): Error {
+        switch (status) {
+            case 400:
+            case 413:
+            // FastAPI's schema rejections. A caller error either way.
+            case 422:
+                return new BadRequestError(message);
+            case 401:
+                return new ServiceCrashedError(
+                    `The ${service} service rejected our API key. INFERENCE_API_KEY must match `
+                    + 'the key that service was started with.',
+                );
+            case 503:
+                // Reported by the model services while the weights are still loading.
+                return new ServiceCrashedError(message);
+            default:
+                return new UpstreamFailureError(`Model service returned ${status}: ${message}`);
         }
     }
 
