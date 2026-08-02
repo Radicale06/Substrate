@@ -680,16 +680,6 @@ Two conventions are load-bearing:
   by the caller. The backend only rejects input it can reject without a network hop, and
   forwards the service's status codes unchanged.
 
-## 🙏 Acknowledgements
-
-Substrate started as a fork of the [Jina AI Reader project](https://github.com/jina-ai/reader),
-by way of [Harsh Gupta's adaptation](https://github.com/hargup/reader), which is where the
-Docker deployment came from.
-
-The browser-driving core — the snapshot streaming, the Readability pass and the Turndown
-conversion — descends from that work. Almost everything else has been rewritten or added
-since; [NOTICE](NOTICE) has the specifics.
-
 ## 📜 License
 
 [Apache-2.0](LICENSE), the same license as the Jina AI Reader project this derives from.
