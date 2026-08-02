@@ -21,6 +21,20 @@ curl -X POST http://localhost:8000/v1/rerank \
 Results come back sorted by `relevance_score`, with `index` pointing at the position in
 the request's `documents` array.
 
+## Run it from the published image
+
+```bash
+docker pull ghcr.io/radicale06/substrate-reranker:latest
+
+docker run --rm -p 8000:8000 \
+  -v substrate-models:/models \
+  ghcr.io/radicale06/substrate-reranker:latest
+```
+
+Same shape as the embedding service: mount `/models` to keep the weights across restarts,
+`-e MODEL_DEVICE=cuda --gpus all` for a GPU. Switching model means switching `MODEL_KIND`
+with it — see below, because the wrong pairing scores wrongly rather than erroring.
+
 ## Two model families, one API
 
 `MODEL_KIND` selects how scores are produced:

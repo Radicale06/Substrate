@@ -1,7 +1,10 @@
 # Substrate — segmenter service
 
-Token counting and chunking. The backend proxies it at `/v1/segment`, and calls it again
-inside `/v1/embeddings` when a request asks for chunking.
+Token counting and chunking. The backend proxies it at `/v1/segment`.
+
+This is the only place in the stack that splits text. `/v1/embeddings` deliberately does
+not — you segment, then embed the chunks, and keep the chunk text to store beside the
+vectors.
 
 ## API
 
@@ -28,6 +31,19 @@ curl -X POST http://localhost:3002/segment \
 | `tokenizer` | `cl100k_base` | Also `o200k_base`, `p50k_base`, `p50k_edit`, `r50k_base`, `gpt2` |
 | `return_chunks` / `return_tokens` | `false` | Include the chunks / every token's text |
 | `head` / `tail` | — | Return only the first / last N tokens |
+
+## Run it from the published image
+
+```bash
+docker pull ghcr.io/radicale06/substrate-segmenter:latest
+
+docker run --rm -p 3002:3002 ghcr.io/radicale06/substrate-segmenter:latest
+```
+
+The only service here that needs neither a browser nor model weights, so it starts
+instantly and runs anywhere. Add `-e EMBEDDINGS_URL=http://host.docker.internal:8000` to
+enable the `semantic` strategy; without it that strategy degrades to `recursive` and says
+so in the response rather than failing.
 
 ## Strategies
 

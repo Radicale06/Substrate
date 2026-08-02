@@ -57,6 +57,26 @@ who set `X-Timeout` asked for. `navigationTimeoutMs` only bounds the fetch; the 
 still comes back the moment the page has usable content. Search reads its results with the
 second one, because waiting out a timeout per result would make every search take minutes.
 
+## Run it from the published image
+
+```bash
+docker pull ghcr.io/radicale06/substrate-reader:latest
+
+docker run --rm -p 3001:3001 \
+  --shm-size=1g \
+  -v substrate-screenshots:/app/local-storage \
+  ghcr.io/radicale06/substrate-reader:latest
+```
+
+`--shm-size` is not optional in spirit. Chrome's default 64MB of `/dev/shm` in a container
+is not enough for real pages, and the image works around it with `--disable-dev-shm-usage`
+— which trades the crash for slower rendering. Giving it real shared memory is the better
+half of that trade.
+
+The volume is what the backend serves screenshots and downloaded images from, so both
+containers must mount the same one at the same path. Nothing else is required: with no
+configuration the service crawls, converts and stores locally.
+
 ## Why this is a separate service
 
 Chrome is the largest and least stable dependency in the stack. Running it here means the

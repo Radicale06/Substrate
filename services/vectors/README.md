@@ -35,6 +35,29 @@ curl -X POST http://localhost:8000/v1/collections/docs/query \
 A query returns both the raw `distance` and the `similarity` (`1 - distance`), so neither
 side has to remember which way round cosine distance runs.
 
+## Run it from the published image
+
+```bash
+docker pull ghcr.io/radicale06/substrate-vectors:latest
+
+docker run --rm -p 8000:8000 \
+  -e VECTORS_DATABASE_URL='postgresql://user:pass@host:5432/db' \
+  ghcr.io/radicale06/substrate-vectors:latest
+```
+
+Any Postgres with pgvector available works. If you do not have one:
+
+```bash
+docker run -d --name pgvector -p 5432:5432 \
+  -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=substrate \
+  pgvector/pgvector:pg17
+```
+
+Use a **direct** connection rather than a transaction pooler: the service issues DDL on
+startup (`create schema`, `create extension`) and again when it builds an index, and a
+pooler will not run those. Started without a database it still comes up, reports
+`unconfigured` on `/health` and answers 503.
+
 ## It does not embed
 
 Vectors come in, ids and distances go out. That is the whole boundary, and it is

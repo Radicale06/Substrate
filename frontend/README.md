@@ -45,6 +45,21 @@ front of you.
 Panels whose service is not running report that rather than erroring: with the `ai`
 profile down, Embeddings and Reranker say so and tell you the command to start them.
 
+## Run it from the published image
+
+```bash
+docker pull ghcr.io/radicale06/substrate-frontend:latest
+
+docker run --rm -p 5173:80 \
+  --network substrate \
+  ghcr.io/radicale06/substrate-frontend:latest
+```
+
+The container's nginx proxies `/api` to a host called `backend` on port 3000, so the
+console needs to be on a network where that name resolves — which is what `--network`
+above is for, and what compose does for you. On its own network it will load and report
+the API as unreachable.
+
 ## Why the API is proxied
 
 Requests go to `/api`, which both the Vite dev server and the production nginx forward to

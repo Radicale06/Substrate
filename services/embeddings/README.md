@@ -23,6 +23,23 @@ curl -X POST http://localhost:8000/v1/embeddings \
 | `dimensions` | *(model default)* | Truncate the vector (Matryoshka), then re-normalize |
 | `instruction` | *(configured)* | Overrides the default instruction for queries |
 
+## Run it from the published image
+
+```bash
+docker pull ghcr.io/radicale06/substrate-embeddings:latest
+
+docker run --rm -p 8000:8000 \
+  -v substrate-models:/models \
+  ghcr.io/radicale06/substrate-embeddings:latest
+```
+
+Mount `/models` or the weights download again on every start — about 1.2GB for the
+default. The first start is slow for that reason; `/health` answers 200 with the model
+still loading and `/v1/embeddings` returns 503 until it is ready, so wait on the latter.
+
+Add `-e MODEL_DEVICE=cuda --gpus all` if you have a GPU. On CPU this works and is slow,
+which is fine for trying it and not for indexing at volume.
+
 ## Default model
 
 `microsoft/harrier-oss-v1-0.6b` — **MIT**, 1024 dimensions. Swap it with `MODEL_ID`; any

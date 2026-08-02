@@ -72,6 +72,49 @@ cd services/searxng && docker compose up
 
 The backend answers on `http://127.0.0.1:3000`.
 
+## 📦 Published images
+
+Every component is published to the GitHub Container Registry on each push to `main`, so
+you can run any part of this without cloning it or building anything.
+
+| Image | Port | Needs |
+|---|---|---|
+| `ghcr.io/radicale06/substrate-backend` | 3000 | nothing; every dependency is optional |
+| `ghcr.io/radicale06/substrate-frontend` | 80 | a reachable `backend` host |
+| `ghcr.io/radicale06/substrate-reader` | 3001 | a volume, and `--shm-size` for Chrome |
+| `ghcr.io/radicale06/substrate-segmenter` | 3002 | nothing |
+| `ghcr.io/radicale06/substrate-vectors` | 8000 | Postgres with pgvector |
+| `ghcr.io/radicale06/substrate-embeddings` | 8000 | a volume for the weights |
+| `ghcr.io/radicale06/substrate-reranker` | 8000 | a volume for the weights |
+
+Tagged `latest`, the short commit SHA, and the release version. SearXNG is not in the list
+because that service runs the upstream `searxng/searxng` image — this repository only
+supplies its `settings.yml`.
+
+Each service's README has its own pull-and-run, including the flags that actually matter
+for it. The whole stack, without a checkout:
+
+```bash
+docker network create substrate
+
+docker run -d --name reader --network substrate --shm-size=1g \
+  -v substrate-storage:/app/local-storage ghcr.io/radicale06/substrate-reader
+docker run -d --name segmenter --network substrate ghcr.io/radicale06/substrate-segmenter
+docker run -d --name backend --network substrate -p 3000:3000 \
+  -e READER_URL=http://reader:3001 -e SEGMENTER_URL=http://segmenter:3002 \
+  -e CORS_ORIGINS=http://localhost:5173 \
+  -v substrate-storage:/app/local-storage ghcr.io/radicale06/substrate-backend
+docker run -d --name frontend --network substrate -p 5173:80 ghcr.io/radicale06/substrate-frontend
+```
+
+That is the core: console, API, browser and chunking. Add `vectors`, `embeddings` and
+`reranker` the same way and point `VECTORS_URL`, `EMBEDDINGS_URL` and `RERANKER_URL` at
+them — unset, each endpoint reports itself as unconfigured and nothing else changes.
+`backend` and `reader` share one volume on purpose: the reader writes screenshots and
+images, the backend serves them.
+
+Compose does all of this for you, and is still the easier path if you have the repo.
+
 ## 🖥️ Usage
 
 The response format is chosen with the `X-Respond-With` header. Omit it to get the default
